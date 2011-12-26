@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 #include "config.h"
@@ -40,6 +41,8 @@ typedef struct X265_t {
     UInt8   ucLevelIdc;
 
     // Params
+    UInt16  usWidth;
+    UInt16  usHeight;
     UInt8   ucMaxCUWidth;
     UInt8   ucMinCUWidth;
     UInt8   ucMaxCUDepth;
@@ -48,21 +51,24 @@ typedef struct X265_t {
     UInt8   ucQuadtreeTUMaxDepthInter;
     UInt8   ucQuadtreeTUMaxDepthIntra;
     UInt8   ucMaxNumRefFrames;
-
-    UInt32  uiWidth;
-    UInt32  uiHeight;
+    UInt8   ucBitsForPOC;
 
     // Feature
     UInt8   bUseNewRefSetting;
     UInt8   bUseSAO;
-    UInt8   bAMVPMode[MAX_CU_DEPTH];
-#if NSQT
-    UInt8   bUseNSQT;
-#endif
-#if AMP
-    UInt8   bUseAMP;
-#endif
     UInt8   bUseLMChroma;
 } X265_t;
+
+
+// ***************************************************************************
+// * bitstream.cpp
+// ***************************************************************************
+void xWriteSPS( X265_t *h );
+
+// ***************************************************************************
+// * set.cpp
+// ***************************************************************************
+void xDefaultParams( X265_t *h );
+int xCheckParams( X265_t *h );
 
 #endif /* __X265_H__ */

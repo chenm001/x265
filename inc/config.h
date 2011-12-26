@@ -36,6 +36,11 @@
 // x265 end
 ////////////////////////////
 
+////////////////////////////
+// JCT-VC G start
+////////////////////////////
+#define G1002_RPS                           1
+
 
 ////////////////////////////
 // JCT-VC F start
@@ -61,6 +66,7 @@
 ////////////////////////////
 // JCT-VC E end
 ////////////////////////////
+#define TILES                               1
 
 
 typedef unsigned char       UInt8;
@@ -76,5 +82,7 @@ typedef          __int64     Int64;
 typedef Int32    Int;
 typedef UInt32  UInt;
 
+#define FALSE   (0)
+#define TRUE    (1)
 
 #endif /* __CONFIG_H__ */

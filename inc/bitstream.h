@@ -33,6 +33,8 @@
 
 
 // ***************************************************************************
+typedef struct X265_t X265_t;
+
 typedef struct X265_BitStream {
     UInt8      *pucBits;
     UInt32      dwCache;
@@ -45,10 +47,17 @@ typedef struct X265_BitStream {
 #define putCache(dst, x)    *(UInt32*)(dst) = BSWAP32(x)
 
 // ***************************************************************************
-extern void xBitStreamInit(X265_BitStream *pBS, UInt8 *pucBuffer, Int nBufferSize);
+static void xBitStreamInit(X265_BitStream *pBS, UInt8 *pucBuffer, Int nBufferSize)
+{
+    assert( nBufferSize > 0 );
 
-// ***************************************************************************
-void xPutBit(X265_BitStream *pBS, Int nBit)
+    pBS->pucBits        =
+    pBS->pucBits0       = pucBuffer;
+    pBS->dwCache        = 0;
+    pBS->nCachedBits    = 0;
+}
+
+static void xPutBit(X265_BitStream *pBS, Int nBit)
 {
     assert((nBit == 0) || (nBit == 1));
     
@@ -65,12 +74,11 @@ void xPutBit(X265_BitStream *pBS, Int nBit)
     }
 }		
 
-// ***************************************************************************
-void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
+static void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
 {
     Int nShift = 32 - pBS->nCachedBits - nNumBits;
     
-    assert((nNumBits > 0) && (nNumBits < 32));
+    assert((nNumBits >= 0) && (nNumBits < 32));
     assert((uiBits >> nNumBits) == 0);
 
     if (nShift >= 0) {
@@ -89,6 +97,26 @@ void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
     }
 }
 
+static void xWriteAlignZero(X265_BitStream *pBS)
+{
+    Int nShift = 8 - (pBS->nCachedBits % 8);
+
+    xPutBits(pBS, 0, nShift);
+}
+
+static void xWriteRBSPTrailingBits(X265_BitStream *pBS)
+{
+    xPutBit(pBS, 1);
+    xWriteAlignZero(pBS);
+}
+
+static Int32 xBitFlush(X265_BitStream *pBS)
+{
+    putCache(pBS->pucBits, pBS->dwCache);
+    return (pBS->pucBits - pBS->pucBits0) + (pBS->nCachedBits + 7) / 8;
+}
+
+
 // ***************************************************************************
 static void xWriteCode( X265_BitStream *pBS, UInt32 uiCode, UInt32 uiLength )
 {
@@ -96,7 +124,6 @@ static void xWriteCode( X265_BitStream *pBS, UInt32 uiCode, UInt32 uiLength )
     xPutBits( pBS, uiCode, uiLength );
 }
 
-// ***************************************************************************
 static void xWriteUvlc( X265_BitStream *pBS, UInt32 uiCode )
 {
     UInt32 uiLength = xLog2(++uiCode);
@@ -105,7 +132,19 @@ static void xWriteUvlc( X265_BitStream *pBS, UInt32 uiCode )
     xPutBits( pBS, uiCode, (uiLength+1));
 }
 
-// ***************************************************************************
+static UInt32 xConvertToUInt( Int32 iValue )
+{
+    return ( iValue > 0) ? (iValue<<1)-1 : -iValue<<1;
+}
+
+static void xWriteSvlc( X265_BitStream *pBS, Int32 iCode )
+{
+    UInt uiCode;
+  
+    uiCode = xConvertToUInt( iCode );
+    xWriteUvlc( pBS, uiCode );
+}
+
 static void xWriteFlag( X265_BitStream *pBS, UInt32 uiCode )
 {
     xPutBit( pBS, uiCode );
