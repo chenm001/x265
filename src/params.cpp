@@ -26,7 +26,7 @@
 
 void xDefaultParams(X265_t *h)
 {
-    memset(h, 0, sizeof(h));
+    memset(h, 0, sizeof(*h));
 
     h->ucProfileIdc                 =  0;
     h->ucLevelIdc                   =  0;
