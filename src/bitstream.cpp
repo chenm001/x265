@@ -100,8 +100,8 @@ void  xWriteFlagTr(UInt value, const char *pSymbolName)
 // ***************************************************************************
 void xWriteSPS( X265_t *h )
 {
-    int i;
     X265_BitStream *pBS = &h->bs;
+    int i;
 #if ENC_DEC_TRACE
     xTraceSPSHeader();
 #endif
@@ -209,3 +209,75 @@ void xWriteSPS( X265_t *h )
     xWriteRBSPTrailingBits(pBS);
 }
 
+#if G1002_RPS
+static void xWriteShortTermRefPicSet( X265_t *h )
+{
+    X265_BitStream *pBS = &h->bs;
+    int i;
+#if INTER_RPS_PREDICTION
+    WRITE_FLAG( 0, "inter_ref_pic_set_prediction_flag" ); // inter_RPS_prediction_flag
+#endif //INTER_RPS_PREDICTION
+    // Turn off inter_ref_pic_set_prediction_flag
+    {
+        WRITE_UVLC( h->ucMaxNumRefFrames,   "num_negative_pics" );
+        WRITE_UVLC( 0,                      "num_positive_pics" );
+        for( i=0 ; i < h->ucMaxNumRefFrames; i++ ) {
+            WRITE_UVLC( (1-i)-1, "delta_poc_s0_minus1" );
+            WRITE_FLAG( 1,       "used_by_curr_pic_s0_flag"); 
+        }
+    }
+}
+#endif
+
+void xWritePPS( X265_t *h )
+{
+    X265_BitStream *pBS = &h->bs;
+    int i;
+#if ENC_DEC_TRACE  
+    xTracePPSHeader();
+#endif
+  
+    WRITE_UVLC( 0,  "pic_parameter_set_id" );
+    WRITE_UVLC( 0,  "seq_parameter_set_id" );
+#if G1002_RPS
+  // RPS is put before entropy_coding_mode_flag
+  // since entropy_coding_mode_flag will probably be removed from the WD
+
+    WRITE_UVLC(h->ucMaxNumRefFrames, "num_short_term_ref_pic_sets" );
+    for( i=0; i < h->ucMaxNumRefFrames; i++ ) {
+        xWriteShortTermRefPicSet(h);
+    }    
+    WRITE_FLAG( 0,  "long_term_ref_pics_present_flag" );
+#endif
+    // entropy_coding_mode_flag
+#if OL_USE_WPP
+    // We code the entropy_coding_mode_flag, it's needed for tests.
+    WRITE_FLAG( 1,                                          "entropy_coding_mode_flag" );
+    WRITE_UVLC( 0,                                          "entropy_coding_synchro" );
+    WRITE_FLAG( 0,                                          "cabac_istate_reset" );
+#endif
+    WRITE_UVLC( 0,                                          "num_temporal_layer_switching_point_flags" );
+    //   num_ref_idx_l0_default_active_minus1
+    //   num_ref_idx_l1_default_active_minus1
+    //   pic_init_qp_minus26  /* relative to 26 */
+    WRITE_FLAG( 0,                                          "constrained_intra_pred_flag" );
+#if FINE_GRANULARITY_SLICES
+    WRITE_CODE( 0, 2,                                       "slice_granularity");
+#endif
+#if !F747_APS
+    WRITE_FLAG( 1,                                          "shared_pps_info_enabled_flag" );
+    //   if( shared_pps_info_enabled_flag )
+    //     if( adaptive_loop_filter_enabled_flag )
+    //       alf_param( )
+#endif
+
+#if WEIGHT_PRED
+    WRITE_FLAG( 0,    "weighted_pred_flat" );   // Use of Weighting Prediction (P_SLICE)
+    WRITE_CODE( 0, 2, "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
+#endif
+
+#if TILES
+    WRITE_FLAG( 0, "tile_info_present_flag" );
+#endif
+    xWriteRBSPTrailingBits(pBS);
+}

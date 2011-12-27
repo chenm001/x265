@@ -39,7 +39,18 @@
 ////////////////////////////
 // JCT-VC G start
 ////////////////////////////
-#define G1002_RPS                           1
+#define G1002_RPS                       1
+#if  !G1002_RPS
+#define REF_SETTING_FOR_LD              1           // reference frame setting for low delay setting (JCTVC-F701)
+#else
+#define INTER_RPS_PREDICTION            1           // remove this once tested.
+#define WRITE_BACK                      1           ///< Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
+#define PRINT_RPS_BITS_WRITTEN          0           ///< Enable/disable the printing of bits used to send the RPS.
+#endif
+#define OL_USE_WPP                      1     // Set to 1 to enable Wavefront Parallel Processing, 0 otherwise
+////////////////////////////
+// JCT-VC G end
+////////////////////////////
 
 
 ////////////////////////////
@@ -52,6 +63,8 @@
                                                     // this should be done with encoder only decision
                                                     // but because of the absence of reference frame management, the related code was hard coded currently
 #define AMP                                 1       ///< JCTVC-F379: asymmetric motion partition
+#define F747_APS                            1       // F747 : Adaptation Parameter Set (APS)
+#define WEIGHT_PRED                         1       ///< F265 & F326: enable weighted prediction
 ////////////////////////////
 // JCT-VC F end
 ////////////////////////////
@@ -66,6 +79,16 @@
 ////////////////////////////
 // JCT-VC E end
 ////////////////////////////
+
+
+/////////////////////////////////
+// AHG SLICES defines section start
+/////////////////////////////////
+#define FINE_GRANULARITY_SLICES             1
+
+/////////////////////////////////
+// AHG SLICES defines section end
+/////////////////////////////////
 #define TILES                               1
 
 
