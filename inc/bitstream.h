@@ -78,21 +78,21 @@ static void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
 {
     Int nShift = 32 - pBS->nCachedBits - nNumBits;
     
-    assert((nNumBits >= 0) && (nNumBits < 32));
-    assert((uiBits >> nNumBits) == 0);
+    assert((nNumBits >= 0) && (nNumBits <= 32));
+    assert(xSHR(uiBits, nNumBits) == 0);
 
     if (nShift >= 0) {
-        pBS->dwCache     |= (uiBits << nShift);
+        pBS->dwCache     |= xSHL(uiBits, nShift);
         pBS->nCachedBits += nNumBits;
     }
     else {
         UInt32 dwCache = pBS->dwCache;
-        dwCache |= uiBits >> -nShift;
+        dwCache |= xSHR(uiBits, -nShift);
         
         putCache(pBS->pucBits, dwCache);
         pBS->pucBits += 4;
         
-        pBS->dwCache = uiBits << (32 + nShift);
+        pBS->dwCache = xSHL(uiBits, (32 + nShift));
         pBS->nCachedBits = -nShift;
     }
 }

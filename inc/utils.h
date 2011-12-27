@@ -36,5 +36,7 @@ static int xLog2(UInt32 x)
     return(log2Size);
 }
 
+#define xSHR(x, n)      ( (n)>=32 ? 0 : ((x)>>(n)) )
+#define xSHL(x, n)      ( (n)>=32 ? 0 : ((x)<<(n)) )
 
 #endif /* __UTILS_H__ */
