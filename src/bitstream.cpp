@@ -281,3 +281,115 @@ void xWritePPS( X265_t *h )
 #endif
     xWriteRBSPTrailingBits(pBS);
 }
+
+void xWriteSliceHeader( X265_t *h )
+{
+    X265_BitStream *pBS = &h->bs;
+    int i;
+#if ENC_DEC_TRACE  
+    xTraceSliceHeader();
+#endif
+    // See NALWrite.cpp :: write(...)
+    //xPutBits(pBS, 0, 3); // temporal_id
+    //xPutBits(pBS, 1, 1); // output_flag
+    //xPutBits(pBS, 1, 4); // reserved_one_4bits
+    
+    WRITE_FLAG( 0, "lightweight_slice_flag" );
+  
+    WRITE_UVLC( h->eSliceType,  "slice_type" );
+    WRITE_UVLC( 0,              "pic_parameter_set_id" );
+#if G1002_RPS
+    if ( h->eSliceType == SLICE_I ) {
+      WRITE_UVLC( 0, "idr_pic_id" );
+      WRITE_FLAG( 0, "no_output_of_prior_pics_flag" );
+    }
+    else {
+      WRITE_CODE( h->iPoc % (1<<h->ucBitsForPOC), h->ucBitsForPOC, "pic_order_cnt_lsb");
+      WRITE_FLAG( 1, "short_term_ref_pic_set_pps_flag");
+      WRITE_UVLC( 0, "short_term_ref_pic_set_idx" );
+    }
+#endif
+
+#if !G1002_RPS
+    // frame_num
+    // if( IdrPicFlag )
+    //   idr_pic_id
+    // if( pic_order_cnt_type  = =  0 )
+    //   pic_order_cnt_lsb  
+    WRITE_CODE( h->uiPoc, 10, "pic_order_cnt_lsb" );   //  9 == SPS->Log2MaxFrameNum
+    // if( slice_type  = =  P  | |  slice_type  = =  B ) {
+    //   num_ref_idx_active_override_flag
+    //   if( num_ref_idx_active_override_flag ) {
+    //     num_ref_idx_l0_active_minus1
+    //     if( slice_type  = =  B )
+    //       num_ref_idx_l1_active_minus1
+    //   }
+    // }
+#endif
+
+    // we always set num_ref_idx_active_override_flag equal to one. this might be done in a more intelligent way 
+    if ( h->eSliceType != SLICE_I ) {
+        WRITE_FLAG( 1 ,                               "num_ref_idx_active_override_flag");
+        WRITE_CODE( h->ucMaxNumRefFrames - 1, 3,      "num_ref_idx_l0_active_minus1" );
+    }
+    else {
+    }
+
+#if G1002_RPS
+    if ( h->eSliceType != SLICE_I ) {
+        WRITE_FLAG(0, "ref_pic_list_modification_flag" );    
+    }
+    if ( h->eSliceType == SLICE_B ) {
+        WRITE_FLAG(0, "ref_pic_list_modification_flag" );
+    }
+#endif
+
+#if !G1002_RPS
+    // ref_pic_list_modification( )
+#endif
+    // ref_pic_list_combination( )
+    // maybe move to own function?
+    if ( h->eSliceType == SLICE_B ) {
+        WRITE_FLAG(0, "ref_pic_list_combination_flag" );
+    }
+
+    //write slice address
+    WRITE_FLAG( 1, "first_slice_in_pic_flag" );
+  
+    //   slice_qp
+    WRITE_SVLC( h->iQP, "slice_qp" ); // this should be delta
+    //   if( sample_adaptive_offset_enabled_flag )
+    //     sao_param()
+    //   if( deblocking_filter_control_present_flag ) {
+    //     disable_deblocking_filter_idc
+    WRITE_FLAG( h->bLoopFilterDisable, "loop_filter_disable");  // should be an IDC
+
+    //     if( disable_deblocking_filter_idc  !=  1 ) {
+    //       slice_alpha_c0_offset_div2
+    //       slice_beta_offset_div2
+    //     }
+    //   }
+    //   if( slice_type = = B )
+    //   collocated_from_l0_flag
+    if ( h->eSliceType == SLICE_B ) {
+        WRITE_FLAG( 1, "collocated_from_l0_flag" );
+        }
+    //   if( adaptive_loop_filter_enabled_flag ) {
+    //     if( !shared_pps_info_enabled_flag )
+    //       alf_param( )
+    //     alf_cu_control_param( )
+    //   }
+    // }
+  
+  // !!!! sytnax elements not in the WD !!!!
+  
+    // ????
+    WRITE_FLAG(1, "DRBFlag");
+
+#if G091_SIGNAL_MAX_NUM_MERGE_CANDS
+    assert( h->ucMaxNumMergeCand <= MRG_MAX_NUM_CANDS_SIGNALED );
+    assert( MRG_MAX_NUM_CANDS_SIGNALED <= MRG_MAX_NUM_CANDS );
+    WRITE_UVLC(MRG_MAX_NUM_CANDS - h->ucMaxNumMergeCand, "maxNumMergeCand");
+#endif
+    xWriteAlignOne(pBS);
+}

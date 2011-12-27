@@ -48,6 +48,11 @@
 #define PRINT_RPS_BITS_WRITTEN          0           ///< Enable/disable the printing of bits used to send the RPS.
 #endif
 #define OL_USE_WPP                      1     // Set to 1 to enable Wavefront Parallel Processing, 0 otherwise
+#define G091_SIGNAL_MAX_NUM_MERGE_CANDS 1           //<G091: maxNumMergeCand signaling in slice header
+#if G091_SIGNAL_MAX_NUM_MERGE_CANDS
+#define MRG_MAX_NUM_CANDS_SIGNALED      5           //<G091: value of maxNumMergeCand signaled in slice header 
+#endif
+#define MRG_MAX_NUM_CANDS               5           // MERGE
 ////////////////////////////
 // JCT-VC G end
 ////////////////////////////

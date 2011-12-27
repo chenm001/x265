@@ -100,8 +100,13 @@ static void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
 static void xWriteAlignZero(X265_BitStream *pBS)
 {
     Int nShift = 8 - (pBS->nCachedBits % 8);
-
     xPutBits(pBS, 0, nShift);
+}
+
+static void xWriteAlignOne(X265_BitStream *pBS)
+{
+    Int nShift = 8 - (pBS->nCachedBits % 8);
+    xPutBits(pBS, (1<<nShift)-1, nShift);
 }
 
 static void xWriteRBSPTrailingBits(X265_BitStream *pBS)

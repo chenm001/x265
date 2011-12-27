@@ -43,11 +43,15 @@ void xDefaultParams(X265_t *h)
     h->ucQuadtreeTUMaxDepthIntra    =  3;
     h->ucMaxNumRefFrames            =  1;
     h->ucBitsForPOC                 =  8;
+#if G091_SIGNAL_MAX_NUM_MERGE_CANDS
+    h->ucMaxNumMergeCand            = MRG_MAX_NUM_CANDS_SIGNALED;
+#endif
 
     // Feature
     h->bUseNewRefSetting            = FALSE;
     h->bUseSAO                      = FALSE;
     h->bUseLMChroma                 = FALSE;
+    h->bLoopFilterDisable           = TRUE;
 }
 
 int confirmPara(int bflag, const char* message)
