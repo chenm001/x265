@@ -87,6 +87,7 @@ typedef struct X265_t {
 void xWriteSPS( X265_t *h );
 void xWritePPS( X265_t *h );
 void xWriteSliceHeader( X265_t *h );
+Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength);
 
 // ***************************************************************************
 // * set.cpp

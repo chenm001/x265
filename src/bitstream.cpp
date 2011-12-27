@@ -393,3 +393,22 @@ void xWriteSliceHeader( X265_t *h )
 #endif
     xWriteAlignOne(pBS);
 }
+
+Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)
+{
+    assert( uiLength > 2 );
+
+    UInt8 *pucDst0 = pucDst;
+    int i;
+    *pucDst++ = *pucSrc++;
+    *pucDst++ = *pucSrc++;
+
+    for( i=2; i < uiLength; i++ ) {
+        const Int nLeadZero = (pucSrc[-2] | pucSrc[-1]);
+        if ( (nLeadZero == 0) && (pucSrc[0] <= 3) ) {
+            *pucDst++ = 0x03;
+        }
+        *pucDst++ = *pucSrc++;
+    }
+    return(pucDst - pucDst0);
+}
