@@ -38,5 +38,7 @@ static int xLog2(UInt32 x)
 
 #define xSHR(x, n)      ( (n)>=32 ? 0 : ((x)>>(n)) )
 #define xSHL(x, n)      ( (n)>=32 ? 0 : ((x)<<(n)) )
+#define MALLOC(n)       malloc(n)
+#define FREE(p)         free(p)
 
 #endif /* __UTILS_H__ */
