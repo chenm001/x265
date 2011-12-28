@@ -36,11 +36,11 @@ void xDefaultParams(X265_t *h)
     h->usHeight                     =  0;
     h->ucMaxCUWidth                 = 64;
     h->ucMinCUWidth                 =  4;
-    h->ucMaxCUDepth                 =  0;
+    h->ucMaxCUDepth                 =  1;
     h->ucQuadtreeTULog2MinSize      =  2;
     h->ucQuadtreeTULog2MaxSize      =  5;
-    h->ucQuadtreeTUMaxDepthInter    =  3;
-    h->ucQuadtreeTUMaxDepthIntra    =  3;
+    h->ucQuadtreeTUMaxDepthInter    =  1;
+    h->ucQuadtreeTUMaxDepthIntra    =  1;
     h->ucMaxNumRefFrames            =  1;
     h->ucBitsForPOC                 =  8;
 #if G091_SIGNAL_MAX_NUM_MERGE_CANDS
@@ -67,13 +67,11 @@ int xCheckParams( X265_t *h )
 {
     int check_failed = false; /* abort if there is a fatal configuration problem */
 
-    h->ucMaxCUDepth = xLog2(h->ucMaxCUWidth) - xLog2(h->ucMinCUWidth);
-
-
 #define xConfirmPara(a,b) check_failed |= confirmPara(a,b)
-    xConfirmPara( (h->ucMaxCUWidth >> h->ucMaxCUDepth) > (1 << h->ucQuadtreeTULog2MinSize), "Assume (QuadtreeTULog2MinSize >= MinCUWidth) fail" );
-    xConfirmPara( h->usWidth  % h->ucMaxCUWidth, "Width must be multiple of MaxCUWidth");
-    xConfirmPara( h->usHeight % h->ucMaxCUWidth, "Height must be multiple of MaxCUWidth");
+    xConfirmPara( xLog2(h->ucMaxCUWidth) - xLog2(h->ucMinCUWidth) > 1, "Currently, x265 can not support CU Depth more than 1" );
+    xConfirmPara( (h->ucMaxCUWidth >> (h->ucMaxCUDepth+1)) == (1 << h->ucQuadtreeTULog2MaxSize), "Assume (QuadtreeTULog2MinSize >= MinCUWidth) fail" );
+    xConfirmPara( h->usWidth  % h->ucMaxCUWidth, "Frame width should be multiple of minimum CU size");
+    xConfirmPara( h->usHeight % h->ucMaxCUWidth, "Frame height should be multiple of minimum CU size");
     xConfirmPara( h->ucMaxNumRefFrames > MAX_REF_NUM, "Currently, x265 can not support so many reference");
 
 #undef xConfirmPara
