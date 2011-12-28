@@ -43,8 +43,20 @@ typedef struct X265_BitStream {
 } X265_BitStream;
 
 
+#define putBits32(dst, x)    *(UInt32*)(dst) = (x);
 #define BSWAP32(x)          ( (x<<24) + ((x<<8)&0xff0000) + ((x>>8)&0xff00) + (x>>24) )
-#define putCache(dst, x)    *(UInt32*)(dst) = BSWAP32(x)
+#define flushCache(dst, x, bits)    { \
+    int _i; \
+    for(_i=0; _i < (bits)>>3; _i++) { \
+        const UInt _tmp = (x) >> 24; \
+        (x) <<= 8; \
+        if (   (dst)[-1] == 0 \
+            && (dst)[-2] == 0 \
+            && _tmp <= 3 ) \
+            *(dst)++ = 0x03; \
+        *(dst)++ = _tmp; \
+    } \
+}
 
 // ***************************************************************************
 static void xBitStreamInit(X265_BitStream *pBS, UInt8 *pucBuffer, Int nBufferSize)
@@ -57,22 +69,12 @@ static void xBitStreamInit(X265_BitStream *pBS, UInt8 *pucBuffer, Int nBufferSiz
     pBS->nCachedBits    = 0;
 }
 
-static void xPutBit(X265_BitStream *pBS, Int nBit)
+static void xPutBits32(X265_BitStream *pBS, UInt32 uiBits)
 {
-    assert((nBit == 0) || (nBit == 1));
-    
-    if (pBS->nCachedBits < 32) {
-        pBS->dwCache |= nBit << (31 - pBS->nCachedBits);
-        pBS->nCachedBits++;
-    }
-    else {
-        putCache(pBS->pucBits, pBS->dwCache);
-        pBS->pucBits += 4;
-        
-        pBS->dwCache = nBit ? (1 << 31) : 0;
-        pBS->nCachedBits = 1;
-    }
-}		
+    assert( pBS->nCachedBits % 8 == 0 );
+    putBits32(pBS->pucBits, uiBits);
+    pBS->pucBits += 4;
+}
 
 static void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
 {
@@ -88,9 +90,8 @@ static void xPutBits(X265_BitStream *pBS, UInt32 uiBits, Int nNumBits)
     else {
         UInt32 dwCache = pBS->dwCache;
         dwCache |= xSHR(uiBits, -nShift);
-        
-        putCache(pBS->pucBits, dwCache);
-        pBS->pucBits += 4;
+
+        flushCache(pBS->pucBits, dwCache, 32);
         
         pBS->dwCache = xSHL(uiBits, (32 + nShift));
         pBS->nCachedBits = -nShift;
@@ -111,13 +112,14 @@ static void xWriteAlignOne(X265_BitStream *pBS)
 
 static void xWriteRBSPTrailingBits(X265_BitStream *pBS)
 {
-    xPutBit(pBS, 1);
+    xPutBits(pBS, 1, 1);
     xWriteAlignZero(pBS);
 }
 
 static Int32 xBitFlush(X265_BitStream *pBS)
 {
-    putCache(pBS->pucBits, pBS->dwCache);
+    flushCache(pBS->pucBits, pBS->dwCache, pBS->nCachedBits);
+    pBS->nCachedBits &= 7;
     return (pBS->pucBits - pBS->pucBits0) + (pBS->nCachedBits + 7) / 8;
 }
 
@@ -152,7 +154,7 @@ static void xWriteSvlc( X265_BitStream *pBS, Int32 iCode )
 
 static void xWriteFlag( X265_BitStream *pBS, UInt32 uiCode )
 {
-    xPutBit( pBS, uiCode );
+    xPutBits( pBS, uiCode, 1 );
 }
 
 #endif /* __BS_H__ */
