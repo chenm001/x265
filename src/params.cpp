@@ -74,7 +74,7 @@ int xCheckParams( X265_t *h )
     xConfirmPara( (h->ucMaxCUWidth >> h->ucMaxCUDepth) > (1 << h->ucQuadtreeTULog2MinSize), "Assume (QuadtreeTULog2MinSize >= MinCUWidth) fail" );
     xConfirmPara( h->usWidth  % h->ucMaxCUWidth, "Width must be multiple of MaxCUWidth");
     xConfirmPara( h->usHeight % h->ucMaxCUWidth, "Height must be multiple of MaxCUWidth");
-    xConfirmPara( h->ucMaxNumRefFrames != 1, "Currently, x265 support one-refreence only");
+    xConfirmPara( h->ucMaxNumRefFrames > MAX_REF_NUM, "Currently, x265 can not support so many reference");
 
 #undef xConfirmPara
     if (check_failed)
