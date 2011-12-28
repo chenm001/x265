@@ -32,6 +32,8 @@
 #define MAX_CU_DEPTH                        (4)
 #define MAX_REF_NUM                         (1)
 #define MAX_WIDTH                           (2048)
+#define MIN_CU_SIZE                         ( 4)
+#define MAX_CU_SIZE                         (64)
 
 #define ALWAYS_INLINE                       __inline
 ////////////////////////////
