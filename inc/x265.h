@@ -32,6 +32,7 @@
 
 #include "config.h"
 #include "bitstream.h"
+#include "utils.h"
 
 /// supported slice type
 typedef enum {
@@ -48,13 +49,50 @@ typedef enum {
     REF_PIC_LIST_C =  2,    ///< combined reference list for uni-prediction in B-Slices
 } X265_RefPicList;
 
+/// reference frame
+typedef struct X265_Frame {
+    UInt8   *pucY;
+    UInt8   *pucU;
+    UInt8   *pucV;
+} X265_Frame;
+
+/// cache
+typedef struct X265_Cache {
+    /// context
+    UInt8   pucTopPixY [MAX_WIDTH    ];
+    UInt8   pucTopFlagY[MAX_WIDTH    ];
+    UInt8   pucTopPixU [MAX_WIDTH / 2];
+    UInt8   pucTopFlagU[MAX_WIDTH / 2];
+    UInt8   pucTopPixV [MAX_WIDTH / 2];
+    UInt8   pucTopFlagV[MAX_WIDTH / 2];
+    UInt8   pucLeftPixY  [MAX_CU_SIZE    ];
+    UInt8   pucLeftFlagY [MAX_CU_SIZE    ];
+    UInt8   pucLeftPixU  [MAX_CU_SIZE / 2];
+    UInt8   pucLeftFlagU [MAX_CU_SIZE / 2];
+    UInt8   pucLeftPixV  [MAX_CU_SIZE / 2];
+    UInt8   pucLeftFlagV [MAX_CU_SIZE / 2];
+    UInt8   pucTopLeftY[(MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE)    ];
+    UInt8   pucTopLeftU[(MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE) / 4];
+    UInt8   pucTopLeftV[(MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE) / 4];
+
+    /// current
+    UInt8   pucPixY[MAX_CU_SIZE * MAX_CU_SIZE    ];
+    UInt8   pucPixU[MAX_CU_SIZE * MAX_CU_SIZE / 4];
+    UInt8   pucPixV[MAX_CU_SIZE * MAX_CU_SIZE / 4];
+} X265_Cache;
+
+/// main handle
 typedef struct X265_t {
     // Local
     X265_BitStream  bs;
     X265_SliceType  eSliceType;
+    X265_Frame      refn[MAX_REF_NUM];
+    X265_Frame      *pFrame;
+    X265_Cache      cache;
     Int32           iPoc;
     Int32           iQP;
 
+    // Interface
     // Profile
     UInt8   ucProfileIdc;
     UInt8   ucLevelIdc;
@@ -94,5 +132,12 @@ Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength);
 // ***************************************************************************
 void xDefaultParams( X265_t *h );
 int xCheckParams( X265_t *h );
+
+// ***************************************************************************
+// * Encode.cpp
+// ***************************************************************************
+void xEncInit( X265_t *h );
+Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize );
+void xEncLoadCache( X265_t *h, UInt uiX, UInt uiY );
 
 #endif /* __X265_H__ */
