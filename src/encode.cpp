@@ -61,13 +61,13 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     /// Write SPS Header
     xPutBits32(pBS, 0x01000000);
     xPutBits(pBS, 0x67, 8);
-    xWriteSPS(&h);
+    xWriteSPS(h);
     xBitFlush(pBS);
 
     /// Write PPS Header
     xPutBits32(pBS, 0x01000000);
     xPutBits(pBS, 0x68, 8);
-    xWritePPS(&h);
+    xWritePPS(h);
     xBitFlush(pBS);
 
     /// Write Silces Header
@@ -76,7 +76,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     //xPutBits(pBS, 1, 1); // output_flag
     //xPutBits(pBS, 1, 4); // reserved_one_4bits
     xPutBits(pBS, 0x11, 8);
-    xWriteSliceHeader(&h);
+    xWriteSliceHeader(h);
 
     /// Encode loop
     for( y=0; y < uiHeight; y+=h->ucMaxCUWidth ) {
