@@ -41,7 +41,6 @@ void xEncInit( X265_t *h )
         h->refn[i].pucU = (UInt8 *)ptr + uiYSize;
         h->refn[i].pucV = (UInt8 *)ptr + uiYSize * 5 / 4;
     }
-    memset( &h->cache, 0, sizeof(h->cache) );
 }
 
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize )
@@ -79,10 +78,12 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     xWriteSliceHeader(h);
 
     /// Encode loop
+    xEncCahceInit( h );
     for( y=0; y < uiHeight; y+=h->ucMaxCUWidth ) {
+        xEncCahceInitLine( h );
         for( x=0; x < uiHeight; x+=h->ucMaxCUWidth ) {
             // Stage 1: Load image to cache
-            xEncLoadCache( h, x, y );
+            xEncCacheLoadCU( h, x, y );
 
         }
     }
@@ -93,7 +94,25 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 // ***************************************************************************
 // * Internal Functions
 // ***************************************************************************
-void xEncLoadCache( X265_t *h, UInt uiX, UInt uiY )
+void xEncCahceInit( X265_t *h )
+{
+    X265_Cache *pCache  = &h->cache;
+    memset( pCache, 0, sizeof(X265_Cache) );
+    memset( pCache->pucTopFlagY, INVALID_PIX, sizeof(pCache->pucTopFlagY) );
+    memset( pCache->pucTopFlagU, INVALID_PIX, sizeof(pCache->pucTopFlagU) );
+    memset( pCache->pucTopFlagV, INVALID_PIX, sizeof(pCache->pucTopFlagV) );
+}
+
+void xEncCahceInitLine( X265_t *h )
+{
+    X265_Cache *pCache  = &h->cache;
+    pCache->iOffset     = 0;
+    memset( pCache->pucLeftFlagY, INVALID_PIX, sizeof(pCache->pucLeftFlagY) );
+    memset( pCache->pucLeftFlagU, INVALID_PIX, sizeof(pCache->pucLeftFlagU) );
+    memset( pCache->pucLeftFlagV, INVALID_PIX, sizeof(pCache->pucLeftFlagV) );
+}
+
+void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
 {
     X265_Cache  *pCache     = &h->cache;
     X265_Frame  *pFrame     = h->pFrame;

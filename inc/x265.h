@@ -56,9 +56,11 @@ typedef struct X265_Frame {
     UInt8   *pucV;
 } X265_Frame;
 
-/// cache
+/// cache for every processor
+#define INVALID_PIX             ((UInt8)~0)
 typedef struct X265_Cache {
     /// context
+    UInt32  iOffset;
     UInt8   pucTopPixY [MAX_WIDTH    ];
     UInt8   pucTopFlagY[MAX_WIDTH    ];
     UInt8   pucTopPixU [MAX_WIDTH / 2];
@@ -79,6 +81,10 @@ typedef struct X265_Cache {
     UInt8   pucPixY[MAX_CU_SIZE * MAX_CU_SIZE    ];
     UInt8   pucPixU[MAX_CU_SIZE * MAX_CU_SIZE / 4];
     UInt8   pucPixV[MAX_CU_SIZE * MAX_CU_SIZE / 4];
+
+    /// IntraPred buffer
+    UInt8   pucPixRef[MAX_CU_SIZE*4+1];
+    UInt8   pucPred[MAX_CU_SIZE * MAX_CU_SIZE];
 } X265_Cache;
 
 /// main handle
@@ -138,6 +144,8 @@ int xCheckParams( X265_t *h );
 // ***************************************************************************
 void xEncInit( X265_t *h );
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize );
-void xEncLoadCache( X265_t *h, UInt uiX, UInt uiY );
+void xEncCahceInit( X265_t *h );
+void xEncCahceInitLine( X265_t *h );
+void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
 
 #endif /* __X265_H__ */
