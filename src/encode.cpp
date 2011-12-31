@@ -80,11 +80,18 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     /// Encode loop
     xEncCahceInit( h );
     for( y=0; y < uiHeight; y+=h->ucMaxCUWidth ) {
+        h->uiCUY = y;
         xEncCahceInitLine( h );
         for( x=0; x < uiHeight; x+=h->ucMaxCUWidth ) {
-            // Stage 1: Load image to cache
+            // Stage 0: Init internal
+            h->uiCUX = x;
+
+            // Stage 1a: Load image to cache
             xEncCacheLoadCU( h, x, y );
 
+            // Stage 1b: Load Intra PU Reference Samples
+            // TODO: ASSUME one PU only
+            xEncIntraLoadRef( h, x, y, h->ucMaxCUWidth );
         }
     }
 
@@ -94,22 +101,26 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 // ***************************************************************************
 // * Internal Functions
 // ***************************************************************************
+
+// ***************************************************************************
+// * Cache Manage Functions
+// ***************************************************************************
 void xEncCahceInit( X265_t *h )
 {
     X265_Cache *pCache  = &h->cache;
     memset( pCache, 0, sizeof(X265_Cache) );
-    memset( pCache->pucTopFlagY, INVALID_PIX, sizeof(pCache->pucTopFlagY) );
-    memset( pCache->pucTopFlagU, INVALID_PIX, sizeof(pCache->pucTopFlagU) );
-    memset( pCache->pucTopFlagV, INVALID_PIX, sizeof(pCache->pucTopFlagV) );
+    memset( pCache->pcTopModeY, MODE_INVALID, sizeof(pCache->pcTopModeY) );
+    memset( pCache->pcTopModeU, MODE_INVALID, sizeof(pCache->pcTopModeU) );
+    memset( pCache->pcTopModeV, MODE_INVALID, sizeof(pCache->pcTopModeV) );
 }
 
 void xEncCahceInitLine( X265_t *h )
 {
     X265_Cache *pCache  = &h->cache;
-    pCache->iOffset     = 0;
-    memset( pCache->pucLeftFlagY, INVALID_PIX, sizeof(pCache->pucLeftFlagY) );
-    memset( pCache->pucLeftFlagU, INVALID_PIX, sizeof(pCache->pucLeftFlagU) );
-    memset( pCache->pucLeftFlagV, INVALID_PIX, sizeof(pCache->pucLeftFlagV) );
+    pCache->uiOffset    = 0;
+    memset( pCache->pcLeftModeY, MODE_INVALID, sizeof(pCache->pcLeftModeY) );
+    memset( pCache->pcLeftModeU, MODE_INVALID, sizeof(pCache->pcLeftModeU) );
+    memset( pCache->pcLeftModeV, MODE_INVALID, sizeof(pCache->pcLeftModeV) );
 }
 
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
@@ -140,3 +151,94 @@ void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
         pucDV += MAX_CU_SIZE / 2;
     }
 }
+
+// ***************************************************************************
+// * IntraPred Functions
+// ***************************************************************************
+void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
+{
+    X265_Cache  *pCache         = &h->cache;
+    const UInt   nMinTUSize     =  (1 << h->ucQuadtreeTULog2MinSize);
+    const UInt32 uiOffset       =  pCache->uiOffset;
+    const UInt   nIdx           = (uiY / MIN_CU_SIZE) * (MAX_CU_SIZE / MIN_CU_SIZE) + (uiX / MIN_CU_SIZE);
+    const UInt8 *pucTopPixY     = &pCache->pucTopPixY[uiOffset + uiX];
+    const UInt8 *pucLeftPixY    =  pCache->pucLeftPixY + uiY;
+    const UInt8 *pucTopLeftY    =  pCache->pucTopLeftY;
+    const  Int8 *pcTopModeY     = &pCache->pcTopModeY[uiOffset + uiX];
+    const  Int8 *pcLeftModeY    =  pCache->pcLeftModeY + uiY;
+
+    /// T(op), B(ottom), L(eft), R(ight)
+    const UInt   bT             = (pcTopModeY [uiX] != MODE_INVALID);
+    const UInt   bL             = (pcLeftModeY[uiY] != MODE_INVALID);
+    const UInt   bLT            = bT && bL;
+    const UInt   bTR            = (pcTopModeY [uiX + nSize] != MODE_INVALID);
+    const UInt   bLB            = (pcLeftModeY[uiY + nSize] != MODE_INVALID);
+    const UInt8  bValid[5]      = {bLB, bL, bLT, bT, bTR};
+    const UInt   nBlkOffset[5]  = {0, nSize, 2*nSize, 2*nSize+1, 3*nSize+1};
+    UInt8 *pucRefY0 = pCache->pucPixRef[0];
+    UInt8 *pucRefY1 = pCache->pucPixRef[1];
+    UInt8  ucPadding;
+    Int i, n;
+
+    // TODO: I ASSUME( CU = PU = TU ) here, do more!
+    assert( (uiX == 0) && (uiY == 0) && (nSize == h->ucMaxCUWidth) );
+
+    // Default to DC when all reference invalid
+    if ( (bT | bL | bLT | bTR | bLB) == 0 )
+        memset( pucRefY0, 0x80, nSize * 4 + 1 );
+    else {
+        // Copy the reconst pixel when valid
+        if (bLB) {
+            for( i=0; i<nSize; i++ ) {
+                pucRefY0[i + nBlkOffset[0]] = pucLeftPixY[nSize * 2 - 1 - i];
+            }
+        }
+        if (bLB) {
+            for( i=0; i<nSize; i++ ) {
+                pucRefY0[i + nBlkOffset[1]] = pucLeftPixY[nSize - 1 - i];
+            }
+        }
+        if (bLT) {
+            pucRefY0[nBlkOffset[2]] = pucTopLeftY[ucTopLeftIdx[nIdx]];
+        }
+        if (bT) {
+            for( i=0; i<nSize; i++ ) {
+                pucRefY0[i + nBlkOffset[3]] = pucTopPixY[i + 0 * nSize];
+            }
+        }
+        if (bTR) {
+            for( i=0; i<nSize; i++ ) {
+                pucRefY0[i + nBlkOffset[4]] = pucTopPixY[i + 1 * nSize];
+            }
+        }
+
+#if PADDING_INTRA
+        // Padding from Right to Left
+        for( n=0; n<ASIZE(bValid); n++ ) {
+            if (bValid[n])
+                break;
+        }
+        ucPadding = pucRefY0[nBlkOffset[n]];
+        for( i=0; i<n*nSize; i++ ) {
+            pucRefY0[i] = ucPadding;
+        }
+
+        // Padding from Left to Right
+        for( ; n<ASIZE(bValid); n++ ) {
+            if (!bValid[n]) {
+                assert( n > 0 );
+                const UInt nBlkLast = nBlkOffset[n-1] + ((n-1) == 2 ? 1 : nSize) - 1;
+                ucPadding = pucRefY0[nBlkLast];
+                for( i=0; i<nSize; i++ ) {
+                    pucRefY0[i] = ucPadding;
+                }
+            }
+        }
+
+        // Fill with Left to Right
+#else
+#error Please sync the code!
+#endif
+    }
+}
+

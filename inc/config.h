@@ -35,6 +35,7 @@
 #define MAX_HEIGHT                          (2048)
 #define MIN_CU_SIZE                         ( 4)
 #define MAX_CU_SIZE                         (64)
+#define MAX_PART_NUM                        ( (MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE) )
 
 #define ALWAYS_INLINE                       __inline
 ////////////////////////////
@@ -58,6 +59,7 @@
 #define MRG_MAX_NUM_CANDS_SIGNALED      5           //<G091: value of maxNumMergeCand signaled in slice header 
 #endif
 #define MRG_MAX_NUM_CANDS               5           // MERGE
+#define PADDING_INTRA                   1           ///< G812: padding from bottom left, copy previous pixel instead of averaging
 ////////////////////////////
 // JCT-VC G end
 ////////////////////////////

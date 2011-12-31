@@ -57,25 +57,32 @@ typedef struct X265_Frame {
 } X265_Frame;
 
 /// cache for every processor
-#define INVALID_PIX             ((UInt8)~0)
+typedef enum {
+    MODE_INVALID    = 255,
+    MODE_PLANE      =   0,
+    MODE_VER        =   1,
+    MODE_HOR        =   2,
+    MODE_DC         =   3,
+} eIntraMode;
+
 typedef struct X265_Cache {
     /// context
-    UInt32  iOffset;
-    UInt8   pucTopPixY [MAX_WIDTH    ];
-    UInt8   pucTopFlagY[MAX_WIDTH    ];
-    UInt8   pucTopPixU [MAX_WIDTH / 2];
-    UInt8   pucTopFlagU[MAX_WIDTH / 2];
-    UInt8   pucTopPixV [MAX_WIDTH / 2];
-    UInt8   pucTopFlagV[MAX_WIDTH / 2];
-    UInt8   pucLeftPixY  [MAX_CU_SIZE    ];
-    UInt8   pucLeftFlagY [MAX_CU_SIZE    ];
-    UInt8   pucLeftPixU  [MAX_CU_SIZE / 2];
-    UInt8   pucLeftFlagU [MAX_CU_SIZE / 2];
-    UInt8   pucLeftPixV  [MAX_CU_SIZE / 2];
-    UInt8   pucLeftFlagV [MAX_CU_SIZE / 2];
-    UInt8   pucTopLeftY[(MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE)    ];
-    UInt8   pucTopLeftU[(MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE) / 4];
-    UInt8   pucTopLeftV[(MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE) / 4];
+    UInt32  uiOffset;
+    UInt8   pucTopPixY[MAX_WIDTH    ];
+    UInt8   pucTopPixU[MAX_WIDTH / 2];
+    UInt8   pucTopPixV[MAX_WIDTH / 2];
+     Int8   pcTopModeY[(MAX_WIDTH + MAX_CU_SIZE)    ];
+     Int8   pcTopModeU[(MAX_WIDTH + MAX_CU_SIZE) / 2];
+     Int8   pcTopModeV[(MAX_WIDTH + MAX_CU_SIZE) / 2];
+    UInt8   pucLeftPixY[MAX_CU_SIZE    ];
+    UInt8   pucLeftPixU[MAX_CU_SIZE / 2];
+    UInt8   pucLeftPixV[MAX_CU_SIZE / 2];
+     Int8   pcLeftModeY[(MAX_CU_SIZE + MAX_CU_SIZE)    ];
+     Int8   pcLeftModeU[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
+     Int8   pcLeftModeV[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
+    UInt8   pucTopLeftY[MAX_PART_NUM    ];
+    UInt8   pucTopLeftU[MAX_PART_NUM / 4];
+    UInt8   pucTopLeftV[MAX_PART_NUM / 4];
 
     /// current
     UInt8   pucPixY[MAX_CU_SIZE * MAX_CU_SIZE    ];
@@ -83,8 +90,8 @@ typedef struct X265_Cache {
     UInt8   pucPixV[MAX_CU_SIZE * MAX_CU_SIZE / 4];
 
     /// IntraPred buffer
-    UInt8   pucPixRef[MAX_CU_SIZE*4+1];
-    UInt8   pucPred[MAX_CU_SIZE * MAX_CU_SIZE];
+    UInt8   pucPixRef[2][4*MAX_CU_SIZE+1];          //< 0:ReconPixel, 1:Filtered
+    UInt8   pucPredY[MAX_CU_SIZE * MAX_CU_SIZE];
 } X265_Cache;
 
 /// main handle
@@ -97,6 +104,8 @@ typedef struct X265_t {
     X265_Cache      cache;
     Int32           iPoc;
     Int32           iQP;
+    UInt32          uiCUX;
+    UInt32          uiCUY;
 
     // Interface
     // Profile
@@ -140,6 +149,12 @@ void xDefaultParams( X265_t *h );
 int xCheckParams( X265_t *h );
 
 // ***************************************************************************
+// * Table.cpp
+// ***************************************************************************
+extern const UInt8 ucTopLeftIdx[MAX_PART_NUM];
+
+
+// ***************************************************************************
 // * Encode.cpp
 // ***************************************************************************
 void xEncInit( X265_t *h );
@@ -147,5 +162,6 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 void xEncCahceInit( X265_t *h );
 void xEncCahceInitLine( X265_t *h );
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
+void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize );
 
 #endif /* __X265_H__ */
