@@ -234,11 +234,16 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 }
             }
         }
-
-        // Fill with Left to Right
 #else
 #error Please sync the code!
 #endif
+
+        // Filter with [1 2 1]
+        pucRefY1[0      ] = pucRefY0[0];
+        pucRefY1[4*nSize] = pucRefY0[4*nSize];
+        for( i=1; i<4*nSize; i++ ) {
+            pucRefY1[i] = (pucRefY0[i - 1] + 2 * pucRefY0[i] + pucRefY0[i + 1] + 2) >> 2;
+        }
     }
 }
 
