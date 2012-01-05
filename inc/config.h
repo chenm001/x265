@@ -35,7 +35,8 @@
 #define MAX_HEIGHT                          (2048)
 #define MIN_CU_SIZE                         ( 4)
 #define MAX_CU_SIZE                         (64)
-#define MAX_PART_NUM                        ( (MAX_CU_SIZE * MAX_CU_SIZE) / (MIN_CU_SIZE * MIN_CU_SIZE) )
+#define MAX_PU_XY                           (MAX_CU_SIZE / MIN_CU_SIZE)
+#define MAX_PART_NUM                        (MAX_PU_XY * MAX_PU_XY)
 
 #define ALWAYS_INLINE                       __inline
 ////////////////////////////
