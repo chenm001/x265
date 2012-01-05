@@ -151,7 +151,6 @@ int xCheckParams( X265_t *h );
 // ***************************************************************************
 // * Table.cpp
 // ***************************************************************************
-extern const UInt8 ucTopLeftIdx[MAX_PART_NUM];
 
 
 // ***************************************************************************
@@ -163,5 +162,12 @@ void xEncCahceInit( X265_t *h );
 void xEncCahceInitLine( X265_t *h );
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
 void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize );
+UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY );
+
+// ***************************************************************************
+// * Pixel.cpp
+// ***************************************************************************
+UInt32 xSad64xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
+UInt32 xSad32xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
 
 #endif /* __X265_H__ */

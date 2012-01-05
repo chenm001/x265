@@ -91,7 +91,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 
             // Stage 1b: Load Intra PU Reference Samples
             // TODO: ASSUME one PU only
-            xEncIntraLoadRef( h, x, y, h->ucMaxCUWidth );
+            xEncIntraLoadRef( h, 0, 0, h->ucMaxCUWidth );
         }
     }
 
@@ -155,12 +155,23 @@ void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
 // ***************************************************************************
 // * IntraPred Functions
 // ***************************************************************************
+UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY )
+{
+    UInt nOffsetX = (uiX % MAX_CU_SIZE) / MIN_CU_SIZE;
+    UInt nOffsetY = (uiY % MAX_CU_SIZE) / MIN_CU_SIZE;
+    UInt nIdx     = nOffsetY * MAX_PU_XY + nOffsetX;
+
+    if ( nOffsetX == 0 )
+        nIdx += MAX_PU_XY;
+
+    return nIdx - 1;
+}
+
 void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
 {
     X265_Cache  *pCache         = &h->cache;
     const UInt   nMinTUSize     =  (1 << h->ucQuadtreeTULog2MinSize);
     const UInt32 uiOffset       =  pCache->uiOffset;
-    const UInt   nIdx           = (uiY / MIN_CU_SIZE) * (MAX_CU_SIZE / MIN_CU_SIZE) + (uiX / MIN_CU_SIZE);
     const UInt8 *pucTopPixY     = &pCache->pucTopPixY[uiOffset + uiX];
     const UInt8 *pucLeftPixY    =  pCache->pucLeftPixY + uiY;
     const UInt8 *pucTopLeftY    =  pCache->pucTopLeftY;
@@ -199,7 +210,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
             }
         }
         if (bLT) {
-            pucRefY0[nBlkOffset[2]] = pucTopLeftY[ucTopLeftIdx[nIdx]];
+            pucRefY0[nBlkOffset[2]] = pucTopLeftY[xGetTopLeftIndex(uiX, uiY)];
         }
         if (bT) {
             for( i=0; i<nSize; i++ ) {
