@@ -38,6 +38,11 @@
 #define MAX_PU_XY                           (MAX_CU_SIZE / MIN_CU_SIZE)
 #define MAX_PART_NUM                        (MAX_PU_XY * MAX_PU_XY)
 
+#define NUM_INTRA_MODE                      (36)
+#define PLANAR_IDX                          ( 0)
+#define PLANAR_IDX_ORDER                    (34)
+#define DC_IDX                              ( 3)
+
 #define ALWAYS_INLINE                       __inline
 ////////////////////////////
 // x265 end
@@ -78,6 +83,7 @@
 #define AMP                                 1       ///< JCTVC-F379: asymmetric motion partition
 #define F747_APS                            1       // F747 : Adaptation Parameter Set (APS)
 #define WEIGHT_PRED                         1       ///< F265 & F326: enable weighted prediction
+#define PLANAR_F483                         1       ///< Modify samples used for planar prediction as per JCTVC-F483
 ////////////////////////////
 // JCT-VC F end
 ////////////////////////////

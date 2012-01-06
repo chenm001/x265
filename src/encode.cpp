@@ -258,3 +258,75 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
 }
 
+void xPredIntraPlanar(
+    UInt8   *pucRef,
+    UInt8   *pucDst,
+    Int      nDstStride,
+    UInt     nSize
+)
+{
+#if !PLANAR_F483
+#error Please sync code
+#endif
+    UInt nLog2Size = xLog2(nSize - 1);
+    UInt8 *pucLeft = pucRef + 2 * nSize - 1;
+    UInt8 *pucTop  = pucRef + 2 * nSize + 1;
+    Int i, j;
+    Int bottomLeft, topRight;
+    Int horPred;
+    Int leftColumn[MAX_CU_SIZE+1], topRow[MAX_CU_SIZE+1], bottomRow[MAX_CU_SIZE+1], rightColumn[MAX_CU_SIZE+1];
+    UInt offset2D = nSize;
+    UInt shift1D = nLog2Size;
+    UInt shift2D = shift1D + 1;
+
+    // Get left and above reference column and row
+    for( i=0; i<nSize+1; i++) {
+        topRow[i]     = pucTop[i];
+        leftColumn[i] = pucLeft[-i];
+    }
+
+    // Prepare intermediate variables used in interpolation
+    bottomLeft = leftColumn[nSize];
+    topRight   = topRow[nSize];
+    for( i=0; i<nSize; i++ ) {
+        bottomRow[i]   = bottomLeft - topRow[i];
+        rightColumn[i] = topRight   - leftColumn[i];
+        topRow[i]      <<= shift1D;
+        leftColumn[i]  <<= shift1D;
+    }
+
+    // Generate prediction signal
+    for( i=0; i<nSize; i++ ) {
+        horPred = leftColumn[i] + offset2D;
+        for( j=0; j<nSize; j++ ) {
+            horPred += rightColumn[i];
+            topRow[j] += bottomRow[j];
+            pucDst[i*nDstStride+j] = ( (horPred + topRow[j]) >> shift2D );
+        }
+    }
+}
+
+
+void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
+{
+    X265_Cache  *pCache     = &h->cache;
+    UInt        nLog2Size   = xLog2(nSize - 1);
+    UInt        bFilter     = g_aucIntraFilterType[nLog2Size-2][nMode];
+    UInt8       *pucRefY    = pCache->pucPixRef[bFilter];
+    UInt8       *pucDstY    = pCache->pucPredY;
+
+    if ( nMode == PLANAR_IDX ) {
+        xPredIntraPlanar(
+            pucRefY,
+            pucDstY,
+            MAX_CU_SIZE,
+            nSize
+        );
+    }
+    else if ( nMode == DC_IDX ) {
+    }
+    else {
+
+    }
+}
+
