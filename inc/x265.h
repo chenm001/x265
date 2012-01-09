@@ -92,6 +92,7 @@ typedef struct X265_Cache {
     /// IntraPred buffer
     UInt8   pucPixRef[2][4*MAX_CU_SIZE+1];          //< 0:ReconPixel, 1:Filtered
     UInt8   pucPredY[MAX_CU_SIZE * MAX_CU_SIZE];
+    UInt8   bValid[5];
 } X265_Cache;
 
 /// main handle

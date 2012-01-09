@@ -194,6 +194,9 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     // TODO: I ASSUME( CU = PU = TU ) here, do more!
     assert( (uiX == 0) && (uiY == 0) && (nSize == h->ucMaxCUWidth) );
 
+    // Save bValid flag for other functions
+    memcpy( pCache->bValid, bValid, sizeof(bValid) );
+
     // Default to DC when all reference invalid
     if ( (bT | bL | bLT | bTR | bLB) == 0 )
         memset( pucRefY0, 0x80, nSize * 4 + 1 );
@@ -306,6 +309,50 @@ void xPredIntraPlanar(
     }
 }
 
+UInt8 xPredIntraGetDCVal(
+    UInt8   *pucRef,
+    UInt     nSize
+)
+{
+    UInt8 *pucLeft = pucRef + 2 * nSize - 1;
+    UInt8 *pucTop  = pucRef + 2 * nSize + 1;
+    UInt32 uiSumTop = 0;
+    UInt32 uiSumLeft = 0;
+    UInt8 ucDcVal;
+    int i;
+
+    for( i=0; i<nSize; i++ ) {
+        uiSumTop  += pucTop [ i];
+        uiSumLeft += pucLeft[-i];
+    }
+    ucDcVal = (uiSumTop + uiSumLeft + nSize) / (nSize + nSize);
+    return ucDcVal;
+}
+
+void xPredIntraDc(
+    UInt8   *pucRef,
+    UInt8   *pucDst,
+    Int      nDstStride,
+    UInt     nSize
+)
+{
+    UInt8 *pucLeft = pucRef + 2 * nSize - 1;
+    UInt8 *pucTop  = pucRef + 2 * nSize + 1;
+    UInt8 ucDcVal = xPredIntraGetDCVal( pucRef, nSize );
+    int i;
+
+    // Fill DC Val
+    for( i=0; i<nSize; i++ ) {
+        memset( &pucDst[i * nDstStride], ucDcVal, nSize );
+    }
+
+    // DC Filtering
+    pucDst[0] = ( pucTop[0] + pucLeft[0] + 2 * pucDst[0] + 2 ) >> 2;
+    for( i=1; i<nSize; i++ ) {
+        pucDst[i           ] = ( pucTop [ i] + 3 * pucDst[i           ] + 2 ) >> 2;
+        pucDst[i*nDstStride] = ( pucLeft[-i] + 3 * pucDst[i*nDstStride] + 2 ) >> 2;
+    }
+}
 
 void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
 {
@@ -324,9 +371,15 @@ void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
         );
     }
     else if ( nMode == DC_IDX ) {
+        xPredIntraDc(
+            pucRefY,
+            pucDstY,
+            MAX_CU_SIZE,
+            nSize
+        );
     }
     else {
-
+        
     }
 }
 
