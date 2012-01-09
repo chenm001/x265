@@ -354,6 +354,54 @@ void xPredIntraDc(
     }
 }
 
+void xPredIntraAng(
+    UInt8   *pucRef,
+    UInt8   *pucDst,
+    Int      nDstStride,
+    UInt     nSize,
+    UInt     nMode
+)
+{
+    UInt   dirMode          = g_aucIntraPredOrder[nMode];
+    Int    nIntraPredAngle  = g_aucIntraPredAngle[dirMode];
+    Int    nInvAngle        = g_aucInvAngle[dirMode];
+    UInt   bModeVer         = (dirMode > 0) && (dirMode < 18);
+    UInt8 *pucLeft          = pucRef + 2 * nSize - 1;
+    UInt8 *pucTop           = pucRef + 2 * nSize + 1;
+    UInt8 *pucTopLeft       = pucRef + 2 * nSize;
+    UInt8  ucRefBuf[2*MAX_CU_SIZE+1];
+    UInt8 *pucRefMain       = ucRefBuf + ( (nIntraPredAngle < 0) ? MAX_CU_SIZE : 0 );
+    UInt8 *pucRefSide       = bModeVer ? pucLeft : pucTop;
+    int x;
+
+    assert( dirMode > 0 );
+
+    // 8-36 and 8-39
+    for( x=0; x<nSize+1; x++ ) {
+        pucRefMain[x] = bModeVer ? pucTopLeft[x] : pucTopLeft[-x];
+    }
+
+    if (nIntraPredAngle < 0) {
+        // Fix my inv left buffer index
+        Int iOffset = 128;
+        if ( bModeVer ) {
+            iOffset   = -128;
+            nInvAngle = -nInvAngle;
+        }
+        // 8-37 or 8-40
+        for( x=-1; x>(nSize*nIntraPredAngle)>>5; x-- ) {
+            iOffset += nInvAngle;
+            pucRefMain[x] = pucRefSide[iOffset >> 8];
+        }
+    }
+    else {
+        // 8-38 or 8-41
+        for( x=nSize+1; x<2*nSize+1; x++ ) {
+            pucRefMain[x] = bModeVer ? pucTop[x] : pucLeft[-x];
+        }
+    }
+}
+
 void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
 {
     X265_Cache  *pCache     = &h->cache;
@@ -379,7 +427,13 @@ void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
         );
     }
     else {
-        
+        xPredIntraAng(
+            pucRefY,
+            pucDstY,
+            MAX_CU_SIZE,
+            nSize,
+            nMode
+        );
     }
 }
 

@@ -153,6 +153,9 @@ int xCheckParams( X265_t *h );
 // * Table.cpp
 // ***************************************************************************
 extern const UInt8 g_aucIntraFilterType[5][NUM_INTRA_MODE];
+extern const UInt8 g_aucIntraPredOrder[NUM_INTRA_MODE];
+extern const Int8 g_aucIntraPredAngle[NUM_INTRA_MODE-3+1];
+extern const Int16 g_aucInvAngle[NUM_INTRA_MODE-3+1];
 
 
 // ***************************************************************************
