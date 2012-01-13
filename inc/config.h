@@ -42,6 +42,7 @@
 #define PLANAR_IDX                          ( 0)
 #define PLANAR_IDX_ORDER                    (34)
 #define DC_IDX                              ( 3)
+#define MAX_SAD                             ( 1 << 30 )
 
 #define ALWAYS_INLINE                       __inline
 ////////////////////////////

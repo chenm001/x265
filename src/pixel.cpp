@@ -49,3 +49,13 @@ UInt32 xSad32xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     }
     return uiSad;
 }
+
+xSad *xSadN[MAX_CU_DEPTH+2] = {
+    NULL,       /*  2 x N */
+    NULL,       /*  4 x N */
+    NULL,       /*  8 x N */
+    NULL,       /* 16 x N */
+    xSad32xN,   /* 32 x N */
+    xSad64xN,   /* 64 x N */
+};
+

@@ -50,6 +50,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     X265_BitStream *pBS     = &h->bs;
     X265_Cache     *pCache  = &h->cache;
     Int x, y;
+    Int i;
 
     /// Copy to local
     h->pFrame = pFrame;
@@ -83,6 +84,12 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
         h->uiCUY = y;
         xEncCahceInitLine( h );
         for( x=0; x < uiHeight; x+=h->ucMaxCUWidth ) {
+            const UInt   nCUSize     = h->ucMaxCUWidth;
+            const UInt   nLog2CUSize = xLog2(nCUSize-1);
+            UInt32 uiBestSad;
+            UInt   nBestMode;
+            UInt   nMode;
+
             // Stage 0: Init internal
             h->uiCUX = x;
 
@@ -92,6 +99,25 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             // Stage 1b: Load Intra PU Reference Samples
             // TODO: ASSUME one PU only
             xEncIntraLoadRef( h, 0, 0, h->ucMaxCUWidth );
+
+            // Stage 2a: Decide Intra
+            // TODO: Support LM mode
+            // TODO: Support more size
+            uiBestSad = MAX_SAD;
+            nBestMode = 0;
+            for( nMode=0; nMode<NUM_INTRA_MODE-1; nMode++ ) {
+                UInt32 uiSad;
+                xEncIntraPredLuma( h, nMode, nCUSize );
+                uiSad = xSadN[nLog2CUSize-2](
+                            nCUSize,
+                            pCache->pucPixY, MAX_CU_SIZE,
+                            pCache->pucPredY, MAX_CU_SIZE
+                        );
+                if ( uiSad < uiBestSad ) {
+                    uiBestSad = uiSad;
+                    nBestMode = nMode;
+                }
+            }
         }
     }
 

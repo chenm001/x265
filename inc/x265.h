@@ -168,11 +168,12 @@ void xEncCahceInitLine( X265_t *h );
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
 void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize );
 UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY );
+void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize );
 
 // ***************************************************************************
 // * Pixel.cpp
 // ***************************************************************************
-UInt32 xSad64xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
-UInt32 xSad32xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
+typedef UInt32 xSad( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
+extern xSad *xSadN[MAX_CU_DEPTH+2];
 
 #endif /* __X265_H__ */
