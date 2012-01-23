@@ -145,3 +145,73 @@ void xDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         pDst[7*MAX_CU_SIZE+i] = (g_aiT8[7*8+0]*d07 + g_aiT8[7*8+1]*d16 + g_aiT8[7*8+2]*d25 + g_aiT8[7*8+3]*d34 + rnd) >> nShift;
     }
 }
+
+void xDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<16; i++ ) {
+        /* Even and Odd */
+        Int32 E0 = pSrc[i*MAX_CU_SIZE+0] + pSrc[i*MAX_CU_SIZE+15];
+        Int32 O0 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E1 = pSrc[i*MAX_CU_SIZE+1] + pSrc[i*MAX_CU_SIZE+14];
+        Int32 O1 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E2 = pSrc[i*MAX_CU_SIZE+2] + pSrc[i*MAX_CU_SIZE+13];
+        Int32 O2 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E3 = pSrc[i*MAX_CU_SIZE+3] + pSrc[i*MAX_CU_SIZE+12];
+        Int32 O3 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E4 = pSrc[i*MAX_CU_SIZE+4] + pSrc[i*MAX_CU_SIZE+11];
+        Int32 O4 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E5 = pSrc[i*MAX_CU_SIZE+5] + pSrc[i*MAX_CU_SIZE+10];
+        Int32 O5 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E6 = pSrc[i*MAX_CU_SIZE+6] + pSrc[i*MAX_CU_SIZE+ 9];
+        Int32 O6 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+        Int32 E7 = pSrc[i*MAX_CU_SIZE+7] + pSrc[i*MAX_CU_SIZE+ 8];
+        Int32 O7 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
+
+        /* EE and EO */
+        Int32 EE0 = E0 + E7;
+        Int32 EO0 = E0 - E7;
+        Int32 EE1 = E1 + E6;
+        Int32 EO1 = E1 - E6;
+        Int32 EE2 = E2 + E5;
+        Int32 EO2 = E2 - E5;
+        Int32 EE3 = E3 + E4;
+        Int32 EO3 = E3 - E4;
+
+        /* EEE and EEO */
+        Int32 EEE0 = EE0 + EE3;
+        Int32 EEO0 = EE0 - EE3;
+        Int32 EEE1 = EE1 + EE2;
+        Int32 EEO1 = EE1 - EE2;
+
+        pDst[ 0*MAX_CU_SIZE+i] = (g_aiT16[ 0*16+0]*EEE0 + g_aiT16[ 0*16+1]*EEE1 + rnd) >> nShift;
+        pDst[ 8*MAX_CU_SIZE+i] = (g_aiT16[ 8*16+0]*EEE0 + g_aiT16[ 8*16+1]*EEE1 + rnd) >> nShift;
+        pDst[ 4*MAX_CU_SIZE+i] = (g_aiT16[ 4*16+0]*EEO0 + g_aiT16[ 4*16+1]*EEO1 + rnd) >> nShift;
+        pDst[12*MAX_CU_SIZE+i] = (g_aiT16[12*16+0]*EEO0 + g_aiT16[12*16+1]*EEO1 + rnd) >> nShift;
+
+        pDst[ 2*MAX_CU_SIZE+i] = (g_aiT16[ 2*16+0]*EO0 + g_aiT16[ 2*16+1]*EO1 + g_aiT16[ 2*16+2]*EO2 + g_aiT16[ 2*16+3]*EO3 + rnd) >> nShift;
+        pDst[ 6*MAX_CU_SIZE+i] = (g_aiT16[ 6*16+0]*EO0 + g_aiT16[ 6*16+1]*EO1 + g_aiT16[ 6*16+2]*EO2 + g_aiT16[ 6*16+3]*EO3 + rnd) >> nShift;
+        pDst[10*MAX_CU_SIZE+i] = (g_aiT16[10*16+0]*EO0 + g_aiT16[10*16+1]*EO1 + g_aiT16[10*16+2]*EO2 + g_aiT16[10*16+3]*EO3 + rnd) >> nShift;
+        pDst[14*MAX_CU_SIZE+i] = (g_aiT16[14*16+0]*EO0 + g_aiT16[14*16+1]*EO1 + g_aiT16[14*16+2]*EO2 + g_aiT16[14*16+3]*EO3 + rnd) >> nShift;
+
+        pDst[ 1*MAX_CU_SIZE+i] = (g_aiT16[ 1*16+0]*O0 + g_aiT16[ 1*16+1]*O1 + g_aiT16[ 1*16+2]*O2 + g_aiT16[ 1*16+3]*O3 +
+                                  g_aiT16[ 1*16+4]*O4 + g_aiT16[ 1*16+5]*O5 + g_aiT16[ 1*16+6]*O6 + g_aiT16[ 1*16+7]*O7 + rnd) >> nShift;
+        pDst[ 3*MAX_CU_SIZE+i] = (g_aiT16[ 3*16+0]*O0 + g_aiT16[ 3*16+1]*O1 + g_aiT16[ 3*16+2]*O2 + g_aiT16[ 3*16+3]*O3 +
+                                  g_aiT16[ 3*16+4]*O4 + g_aiT16[ 3*16+5]*O5 + g_aiT16[ 3*16+6]*O6 + g_aiT16[ 3*16+7]*O7 + rnd) >> nShift;
+        pDst[ 5*MAX_CU_SIZE+i] = (g_aiT16[ 5*16+0]*O0 + g_aiT16[ 5*16+1]*O1 + g_aiT16[ 5*16+2]*O2 + g_aiT16[ 5*16+3]*O3 +
+                                  g_aiT16[ 5*16+4]*O4 + g_aiT16[ 5*16+5]*O5 + g_aiT16[ 5*16+6]*O6 + g_aiT16[ 5*16+7]*O7 + rnd) >> nShift;
+        pDst[ 7*MAX_CU_SIZE+i] = (g_aiT16[ 7*16+0]*O0 + g_aiT16[ 7*16+1]*O1 + g_aiT16[ 7*16+2]*O2 + g_aiT16[ 7*16+3]*O3 +
+                                  g_aiT16[ 7*16+4]*O4 + g_aiT16[ 7*16+5]*O5 + g_aiT16[ 7*16+6]*O6 + g_aiT16[ 7*16+7]*O7 + rnd) >> nShift;
+        pDst[ 9*MAX_CU_SIZE+i] = (g_aiT16[ 9*16+0]*O0 + g_aiT16[ 9*16+1]*O1 + g_aiT16[ 9*16+2]*O2 + g_aiT16[ 9*16+3]*O3 +
+                                  g_aiT16[ 9*16+4]*O4 + g_aiT16[ 9*16+5]*O5 + g_aiT16[ 9*16+6]*O6 + g_aiT16[ 9*16+7]*O7 + rnd) >> nShift;
+        pDst[11*MAX_CU_SIZE+i] = (g_aiT16[11*16+0]*O0 + g_aiT16[11*16+1]*O1 + g_aiT16[11*16+2]*O2 + g_aiT16[11*16+3]*O3 +
+                                  g_aiT16[11*16+4]*O4 + g_aiT16[11*16+5]*O5 + g_aiT16[11*16+6]*O6 + g_aiT16[11*16+7]*O7 + rnd) >> nShift;
+        pDst[13*MAX_CU_SIZE+i] = (g_aiT16[13*16+0]*O0 + g_aiT16[13*16+1]*O1 + g_aiT16[13*16+2]*O2 + g_aiT16[13*16+3]*O3 +
+                                  g_aiT16[13*16+4]*O4 + g_aiT16[13*16+5]*O5 + g_aiT16[13*16+6]*O6 + g_aiT16[13*16+7]*O7 + rnd) >> nShift;
+        pDst[15*MAX_CU_SIZE+i] = (g_aiT16[15*16+0]*O0 + g_aiT16[15*16+1]*O1 + g_aiT16[15*16+2]*O2 + g_aiT16[15*16+3]*O3 +
+                                  g_aiT16[15*16+4]*O4 + g_aiT16[15*16+5]*O5 + g_aiT16[15*16+6]*O6 + g_aiT16[15*16+7]*O7 + rnd) >> nShift;
+    }
+}
+
