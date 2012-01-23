@@ -62,3 +62,52 @@ xSad *xSadN[MAX_CU_DEPTH+2] = {
     xSad64xN,   /* 64 x N */
 };
 
+
+// ***************************************************************************
+// * DCT Functions
+// ***************************************************************************
+
+/** 4x4 forward transform implemented using partial butterfly structure (1D)
+ *  \param pSrc   input data (residual)
+ *  \param pDst   output data (transpose transform coefficients)
+ *  \param nLines transform lines
+ *  \param nShift specifies right shift after 1D transform
+ */
+void xDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<nLines; i++ ) {
+        /* Even and Odd */
+        Int32 s03 = pSrc[i*MAX_CU_SIZE+0] + pSrc[i*MAX_CU_SIZE+3];
+        Int32 d03 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+3];
+        Int32 s12 = pSrc[i*MAX_CU_SIZE+1] + pSrc[i*MAX_CU_SIZE+2];
+        Int32 d12 = pSrc[i*MAX_CU_SIZE+1] - pSrc[i*MAX_CU_SIZE+2];
+
+        pDst[0*MAX_CU_SIZE+i] = ( g_aiT4[0*4+0]*s03 + g_aiT4[0*4+1]*s12 + rnd ) >> nShift;
+        pDst[2*MAX_CU_SIZE+i] = ( g_aiT4[2*4+0]*s03 + g_aiT4[2*4+1]*s12 + rnd ) >> nShift;
+        pDst[1*MAX_CU_SIZE+i] = ( g_aiT4[1*4+0]*d03 + g_aiT4[1*4+1]*d12 + rnd ) >> nShift;
+        pDst[3*MAX_CU_SIZE+i] = ( g_aiT4[3*4+0]*d03 + g_aiT4[3*4+1]*d12 + rnd ) >> nShift;
+    }
+}
+
+void xDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<4; i++ ) {
+        // Intermediate Variables
+        Int32 c0 = pSrc[i*MAX_CU_SIZE+0] + pSrc[i*MAX_CU_SIZE+3];
+        Int32 c1 = pSrc[i*MAX_CU_SIZE+1] + pSrc[i*MAX_CU_SIZE+3];
+        Int32 c2 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+1];
+        Int32 c3 = 74* pSrc[i*MAX_CU_SIZE+2];
+        Int32 c4 = (pSrc[i*MAX_CU_SIZE+0]+ pSrc[i*MAX_CU_SIZE+1] - pSrc[i*MAX_CU_SIZE+3]);
+
+        pDst[0*MAX_CU_SIZE+i] =  ( 29 * c0 + 55 * c1 + c3 + rnd ) >> nShift;
+        pDst[1*MAX_CU_SIZE+i] =  ( 74 * c4                + rnd ) >> nShift;
+        pDst[2*MAX_CU_SIZE+i] =  ( 29 * c2 + 55 * c0 - c3 + rnd ) >> nShift;
+        pDst[3*MAX_CU_SIZE+i] =  ( 55 * c2 - 29 * c1 + c3 + rnd ) >> nShift;
+    }
+}
