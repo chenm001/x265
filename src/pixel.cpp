@@ -215,3 +215,60 @@ void xDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
+void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i,k;
+    Int32 E[16],O[16];
+    Int32 EE[8],EO[8];
+    Int32 EEE[4],EEO[4];
+    Int32 EEEE[2],EEEO[2];
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<32; i++ ) {
+        /* E and O */
+        for( k=0; k<16; k++ ) {
+            E[k] = pSrc[i*MAX_CU_SIZE+k] + pSrc[i*MAX_CU_SIZE+31-k];
+            O[k] = pSrc[i*MAX_CU_SIZE+k] - pSrc[i*MAX_CU_SIZE+31-k];
+        }
+        /* EE and EO */
+        for( k=0; k<8; k++ ) {
+            EE[k] = E[k] + E[15-k];
+            EO[k] = E[k] - E[15-k];
+        }
+        /* EEE and EEO */
+        for( k=0; k<4; k++ ) {
+            EEE[k] = EE[k] + EE[7-k];
+            EEO[k] = EE[k] - EE[7-k];
+        }
+        /* EEEE and EEEO */
+        EEEE[0] = EEE[0] + EEE[3];
+        EEEO[0] = EEE[0] - EEE[3];
+        EEEE[1] = EEE[1] + EEE[2];
+        EEEO[1] = EEE[1] - EEE[2];
+
+        // 0, 8, 16, 24
+        pDst[ 0*MAX_CU_SIZE+i] = (g_aiT32[ 0*16+0]*EEEE[0] + g_aiT32[ 0*16+1]*EEEE[1] + rnd) >> nShift;
+        pDst[16*MAX_CU_SIZE+i] = (g_aiT32[16*16+0]*EEEE[0] + g_aiT32[16*16+1]*EEEE[1] + rnd) >> nShift;
+        pDst[ 8*MAX_CU_SIZE+i] = (g_aiT32[ 8*16+0]*EEEO[0] + g_aiT32[ 8*16+1]*EEEO[1] + rnd) >> nShift;
+        pDst[24*MAX_CU_SIZE+i] = (g_aiT32[24*16+0]*EEEO[0] + g_aiT32[24*16+1]*EEEO[1] + rnd) >> nShift;
+
+        // 4, 12, 20, 28
+        for( k=4; k<32; k+=8 ) {
+            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*16+0]*EEO[0] + g_aiT32[k*16+1]*EEO[1] + g_aiT32[k*16+2]*EEO[2] + g_aiT32[k*16+3]*EEO[3] + rnd) >> nShift;
+        }
+
+        // 2, 6, 10, 14, 18, 22, 26, 30
+        for( k=2; k<32; k+=4 ) {
+            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*16+0]*EO[0] + g_aiT32[k*16+1]*EO[1] + g_aiT32[k*16+2]*EO[2] + g_aiT32[k*16+3]*EO[3] +
+                                     g_aiT32[k*16+4]*EO[4] + g_aiT32[k*16+5]*EO[5] + g_aiT32[k*16+6]*EO[6] + g_aiT32[k*16+7]*EO[7] + rnd) >> nShift;
+        }
+
+        // 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
+        for( k=1; k<32; k+=2 ) {
+            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*16+ 0]*O[ 0] + g_aiT32[k*16+ 1]*O[ 1] + g_aiT32[k*16+ 2]*O[ 2] + g_aiT32[k*16+ 3]*O[ 3] +
+                                     g_aiT32[k*16+ 4]*O[ 4] + g_aiT32[k*16+ 5]*O[ 5] + g_aiT32[k*16+ 6]*O[ 6] + g_aiT32[k*16+ 7]*O[ 7] +
+                                     g_aiT32[k*16+ 8]*O[ 8] + g_aiT32[k*16+ 9]*O[ 9] + g_aiT32[k*16+10]*O[10] + g_aiT32[k*16+11]*O[11] +
+                                     g_aiT32[k*16+12]*O[12] + g_aiT32[k*16+13]*O[13] + g_aiT32[k*16+14]*O[14] + g_aiT32[k*16+15]*O[15] + rnd) >> nShift;
+        }
+    }
+}
