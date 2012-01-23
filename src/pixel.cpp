@@ -111,3 +111,37 @@ void xDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
         pDst[3*MAX_CU_SIZE+i] =  ( 55 * c2 - 29 * c1 + c3 + rnd ) >> nShift;
     }
 }
+
+void xDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<nLines; i++ ) {
+        /* Even and Odd */
+        Int32 s07 = pSrc[i*MAX_CU_SIZE+0] + pSrc[i*MAX_CU_SIZE+7];
+        Int32 d07 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+7];
+        Int32 s16 = pSrc[i*MAX_CU_SIZE+1] + pSrc[i*MAX_CU_SIZE+6];
+        Int32 d16 = pSrc[i*MAX_CU_SIZE+1] - pSrc[i*MAX_CU_SIZE+6];
+        Int32 s25 = pSrc[i*MAX_CU_SIZE+2] + pSrc[i*MAX_CU_SIZE+5];
+        Int32 d25 = pSrc[i*MAX_CU_SIZE+2] - pSrc[i*MAX_CU_SIZE+5];
+        Int32 s34 = pSrc[i*MAX_CU_SIZE+3] + pSrc[i*MAX_CU_SIZE+4];
+        Int32 d34 = pSrc[i*MAX_CU_SIZE+3] - pSrc[i*MAX_CU_SIZE+4];
+
+        /* EE and EO */
+        Int32 EE0 = s07 + s34;
+        Int32 EO0 = s07 - s34;
+        Int32 EE1 = s16 + s25;
+        Int32 EO1 = s16 - s25;
+
+        pDst[0*MAX_CU_SIZE+i] = (g_aiT8[0*8+0]*EE0 + g_aiT8[0*8+1]*EE1 + rnd) >> nShift;
+        pDst[4*MAX_CU_SIZE+i] = (g_aiT8[4*8+0]*EE0 + g_aiT8[4*8+1]*EE1 + rnd) >> nShift;
+        pDst[2*MAX_CU_SIZE+i] = (g_aiT8[2*8+0]*EO0 + g_aiT8[2*8+1]*EO1 + rnd) >> nShift;
+        pDst[6*MAX_CU_SIZE+i] = (g_aiT8[6*8+0]*EO0 + g_aiT8[6*8+1]*EO1 + rnd) >> nShift;
+
+        pDst[1*MAX_CU_SIZE+i] = (g_aiT8[1*8+0]*d07 + g_aiT8[1*8+1]*d16 + g_aiT8[1*8+2]*d25 + g_aiT8[1*8+3]*d34 + rnd) >> nShift;
+        pDst[3*MAX_CU_SIZE+i] = (g_aiT8[3*8+0]*d07 + g_aiT8[3*8+1]*d16 + g_aiT8[3*8+2]*d25 + g_aiT8[3*8+3]*d34 + rnd) >> nShift;
+        pDst[5*MAX_CU_SIZE+i] = (g_aiT8[5*8+0]*d07 + g_aiT8[5*8+1]*d16 + g_aiT8[5*8+2]*d25 + g_aiT8[5*8+3]*d34 + rnd) >> nShift;
+        pDst[7*MAX_CU_SIZE+i] = (g_aiT8[7*8+0]*d07 + g_aiT8[7*8+1]*d16 + g_aiT8[7*8+2]*d25 + g_aiT8[7*8+3]*d34 + rnd) >> nShift;
+    }
+}
