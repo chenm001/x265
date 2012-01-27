@@ -272,3 +272,36 @@ void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         }
     }
 }
+
+UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
+{
+    int x, y;
+    UInt32 uiAcSum = 0;
+    UInt uiLog2TrSize = xLog2( iWidth - 1);
+    UInt uiQ = g_quantScales[nQP % 6];
+
+    UInt uiBitDepth = 8;
+    UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize;  // Represents scaling through forward transform
+    Int iQBits = QUANT_SHIFT + (nQP / 6) + iTransformShift;
+
+    Int32 iRnd = (eSType == SLICE_I ? 171 : 85) << (iQBits-9);
+
+    for( y=0; y < iHeight; y++ ) {
+        for( x=0; x < iWidth; x++ ) {
+            Int iLevel;
+            Int  iSign;
+            UInt nBlockPos = y * MAX_CU_SIZE + x;
+            iLevel  = pSrc[nBlockPos];
+            iSign   = (iLevel < 0 ? -1: 1);      
+
+            iLevel = ( abs(iLevel) * uiQ + iRnd ) >> iQBits;
+            uiAcSum += iLevel;
+            iLevel *= iSign;        
+            pDst[nBlockPos] = iLevel;
+#if LEVEL_LIMIT
+            pDst[nBlockPos] = Clip3(-32768, 32767, pDst[nBlockPos]);
+#endif
+        }
+    }
+    return uiAcSum;
+}

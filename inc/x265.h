@@ -160,6 +160,7 @@ extern const Int8 g_aiT4[4*4];
 extern const Int8 g_aiT8[8*8];
 extern const Int8 g_aiT16[16*16];
 extern const Int8 g_aiT32[32*32];
+extern const Int16 g_quantScales[6];
 
 // ***************************************************************************
 // * Encode.cpp

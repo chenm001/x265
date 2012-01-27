@@ -50,6 +50,17 @@
 ////////////////////////////
 
 ////////////////////////////
+// JCT-VC start
+////////////////////////////
+#define QUANT_IQUANT_SHIFT              20 // Q(QP%6) * IQ(QP%6) = 2^20
+#define QUANT_SHIFT                     14 // Q(4) = 2^14
+#define SCALE_BITS                      15 // Inherited from TMuC, pressumably for fractional bit estimates in RDOQ
+#define MAX_TR_DYNAMIC_RANGE            15 // Maximum transform dynamic range (excluding sign bit)
+////////////////////////////
+// JCT-VC end
+////////////////////////////
+
+////////////////////////////
 // JCT-VC G start
 ////////////////////////////
 #define G1002_RPS                       1
@@ -66,6 +77,7 @@
 #define MRG_MAX_NUM_CANDS_SIGNALED      5           //<G091: value of maxNumMergeCand signaled in slice header 
 #endif
 #define MRG_MAX_NUM_CANDS               5           // MERGE
+#define LEVEL_LIMIT                     1           ///< G719 : Restriction for limits to 16 bits (signed) diapason
 #define PADDING_INTRA                   1           ///< G812: padding from bottom left, copy previous pixel instead of averaging
 ////////////////////////////
 // JCT-VC G end

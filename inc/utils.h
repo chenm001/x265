@@ -35,6 +35,15 @@ static int xLog2(UInt32 x)
     return(log2Size);
 }
 
+static Int32 Clip3( Int32 minVal, Int32 maxVal, Int32 a )
+{
+    if ( a < minVal )
+        a = minVal;
+    else if ( a > maxVal )
+        a = maxVal;
+    return a;
+}
+
 #define xSHR(x, n)      ( (n)>=32 ? 0 : ((x)>>(n)) )
 #define xSHL(x, n)      ( (n)>=32 ? 0 : ((x)<<(n)) )
 #define MALLOC(n)       malloc(n)
