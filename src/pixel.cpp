@@ -273,6 +273,36 @@ void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
+/** 4x4 inverse transform implemented using partial butterfly structure (1D)
+ *  \param pSrc   input data (residual)
+ *  \param pDst   output data (transpose transform coefficients)
+ *  \param nLines transform lines
+ *  \param nShift specifies right shift after 1D transform
+ */
+void xInvDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<nLines; i++ ) {
+        /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+        Int32 O0 = g_aiT4[1*4+0]*pSrc[1*MAX_CU_SIZE+i] + g_aiT4[3*4+0]*pSrc[3*MAX_CU_SIZE+i];
+        Int32 O1 = g_aiT4[1*4+1]*pSrc[1*MAX_CU_SIZE+i] + g_aiT4[3*4+1]*pSrc[3*MAX_CU_SIZE+i];
+        Int32 E0 = g_aiT4[0*4+0]*pSrc[0*MAX_CU_SIZE+i] + g_aiT4[2*4+0]*pSrc[2*MAX_CU_SIZE+i];
+        Int32 E1 = g_aiT4[0*4+1]*pSrc[0*MAX_CU_SIZE+i] + g_aiT4[2*4+1]*pSrc[2*MAX_CU_SIZE+i];
+
+        /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+#if IT_CLIPPING
+        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, (E0 + O0 + rnd) >> nShift );
+        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, (E1 + O1 + rnd) >> nShift );
+        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, (E1 - O1 + rnd) >> nShift );
+        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, (E0 - O0 + rnd) >> nShift );
+#else
+#error Please sync the code!
+#endif
+    }
+}
+
 void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
 {
     int i;
