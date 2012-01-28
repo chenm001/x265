@@ -377,6 +377,93 @@ void xInvDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
+void xInvDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<nLines; i++ ) {
+        /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+        Int32 O0 =   g_aiT16[ 1*16+0]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+0]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+0]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+0]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+0]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+0]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+0]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+0]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O1 =   g_aiT16[ 1*16+1]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+1]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+1]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+1]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+1]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+1]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+1]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+1]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O2 =   g_aiT16[ 1*16+2]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+2]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+2]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+2]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+2]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+2]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+2]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+2]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O3 =   g_aiT16[ 1*16+3]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+3]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+3]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+3]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+3]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+3]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+3]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+3]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O4 =   g_aiT16[ 1*16+4]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+4]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+4]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+4]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+4]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+4]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+4]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+4]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O5 =   g_aiT16[ 1*16+5]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+5]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+5]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+5]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+5]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+5]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+5]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+5]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O6 =   g_aiT16[ 1*16+6]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+6]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+6]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+6]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+6]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+6]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+6]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+6]*pSrc[15*MAX_CU_SIZE+i];
+        Int32 O7 =   g_aiT16[ 1*16+7]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT16[ 3*16+7]*pSrc[ 3*MAX_CU_SIZE+i] + g_aiT16[ 5*16+7]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT16[ 7*16+7]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT16[ 9*16+7]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT16[11*16+7]*pSrc[11*MAX_CU_SIZE+i] + g_aiT16[13*16+7]*pSrc[13*MAX_CU_SIZE+i] + g_aiT16[15*16+7]*pSrc[15*MAX_CU_SIZE+i];
+
+        Int32 EO0 = g_aiT16[ 2*16+0]*pSrc[ 2*MAX_CU_SIZE+i] + g_aiT16[ 6*16+0]*pSrc[ 6*MAX_CU_SIZE+i] + g_aiT16[10*16+0]*pSrc[10*MAX_CU_SIZE+i] + g_aiT16[14*16+0]*pSrc[14*MAX_CU_SIZE+i];
+        Int32 EO1 = g_aiT16[ 2*16+1]*pSrc[ 2*MAX_CU_SIZE+i] + g_aiT16[ 6*16+1]*pSrc[ 6*MAX_CU_SIZE+i] + g_aiT16[10*16+1]*pSrc[10*MAX_CU_SIZE+i] + g_aiT16[14*16+1]*pSrc[14*MAX_CU_SIZE+i];
+        Int32 EO2 = g_aiT16[ 2*16+2]*pSrc[ 2*MAX_CU_SIZE+i] + g_aiT16[ 6*16+2]*pSrc[ 6*MAX_CU_SIZE+i] + g_aiT16[10*16+2]*pSrc[10*MAX_CU_SIZE+i] + g_aiT16[14*16+2]*pSrc[14*MAX_CU_SIZE+i];
+        Int32 EO3 = g_aiT16[ 2*16+3]*pSrc[ 2*MAX_CU_SIZE+i] + g_aiT16[ 6*16+3]*pSrc[ 6*MAX_CU_SIZE+i] + g_aiT16[10*16+3]*pSrc[10*MAX_CU_SIZE+i] + g_aiT16[14*16+3]*pSrc[14*MAX_CU_SIZE+i];
+
+        Int32 EEO0 = g_aiT16[4*16+0]*pSrc[4*MAX_CU_SIZE+i] + g_aiT16[12*16+0]*pSrc[12*MAX_CU_SIZE+i];
+        Int32 EEO1 = g_aiT16[4*16+1]*pSrc[4*MAX_CU_SIZE+i] + g_aiT16[12*16+1]*pSrc[12*MAX_CU_SIZE+i];
+        Int32 EEE0 = g_aiT16[0*16+0]*pSrc[0*MAX_CU_SIZE+i] + g_aiT16[ 8*16+0]*pSrc[ 8*MAX_CU_SIZE+i];
+        Int32 EEE1 = g_aiT16[0*16+1]*pSrc[0*MAX_CU_SIZE+i] + g_aiT16[ 8*16+1]*pSrc[ 8*MAX_CU_SIZE+i];
+
+        /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+        Int32 EE0 = EEE0 + EEO0;
+        Int32 EE3 = EEE0 - EEO0;
+        Int32 EE1 = EEE1 + EEO1;
+        Int32 EE2 = EEE1 - EEO1;
+
+        Int32 E0 = EE0 + EO0;
+        Int32 E7 = EE0 - EO0;
+        Int32 E1 = EE1 + EO1;
+        Int32 E6 = EE1 - EO1;
+        Int32 E2 = EE2 + EO2;
+        Int32 E5 = EE2 - EO2;
+        Int32 E3 = EE3 + EO3;
+        Int32 E4 = EE3 - EO3;
+
+        pDst[i*MAX_CU_SIZE+ 0] = (E0 + O0 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+15] = (E0 - O0 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 1] = (E1 + O1 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+14] = (E1 - O1 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 2] = (E2 + O2 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+13] = (E2 - O2 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 3] = (E3 + O3 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+12] = (E3 - O3 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 4] = (E4 + O4 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+11] = (E4 - O4 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 5] = (E5 + O5 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+10] = (E5 - O5 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 6] = (E6 + O6 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 9] = (E6 - O6 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 7] = (E7 + O7 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+ 8] = (E7 - O7 + rnd) >> nShift;
+
+#if IT_CLIPPING
+        pDst[i*MAX_CU_SIZE+ 0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 0] );
+        pDst[i*MAX_CU_SIZE+ 1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 1] );
+        pDst[i*MAX_CU_SIZE+ 2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 2] );
+        pDst[i*MAX_CU_SIZE+ 3] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 3] );
+        pDst[i*MAX_CU_SIZE+ 4] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 4] );
+        pDst[i*MAX_CU_SIZE+ 5] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 5] );
+        pDst[i*MAX_CU_SIZE+ 6] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 6] );
+        pDst[i*MAX_CU_SIZE+ 7] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 7] );
+        pDst[i*MAX_CU_SIZE+ 8] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 8] );
+        pDst[i*MAX_CU_SIZE+ 9] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 9] );
+        pDst[i*MAX_CU_SIZE+10] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+10] );
+        pDst[i*MAX_CU_SIZE+11] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+11] );
+        pDst[i*MAX_CU_SIZE+12] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+12] );
+        pDst[i*MAX_CU_SIZE+13] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+13] );
+        pDst[i*MAX_CU_SIZE+14] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+14] );
+        pDst[i*MAX_CU_SIZE+15] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+15] );
+#endif
+    }
+}
+
 UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
 {
     int x, y;
