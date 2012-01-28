@@ -292,13 +292,16 @@ void xInvDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         Int32 E1 = g_aiT4[0*4+1]*pSrc[0*MAX_CU_SIZE+i] + g_aiT4[2*4+1]*pSrc[2*MAX_CU_SIZE+i];
 
         /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+        pDst[i*MAX_CU_SIZE+0] = (E0 + O0 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+1] = (E1 + O1 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+2] = (E1 - O1 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+3] = (E0 - O0 + rnd) >> nShift;
+
 #if IT_CLIPPING
-        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, (E0 + O0 + rnd) >> nShift );
-        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, (E1 + O1 + rnd) >> nShift );
-        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, (E1 - O1 + rnd) >> nShift );
-        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, (E0 - O0 + rnd) >> nShift );
-#else
-#error Please sync the code!
+        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+0] );
+        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+1] );
+        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+2] );
+        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+3] );
 #endif
     }
 }
@@ -316,13 +319,16 @@ void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
         Int32 c3 = 74* pSrc[1*MAX_CU_SIZE+i];
         Int32 c4 = pSrc[0*MAX_CU_SIZE+i] - pSrc[2*MAX_CU_SIZE+i] + pSrc[3*MAX_CU_SIZE+i];
 
+        pDst[i*MAX_CU_SIZE+0] = ( 29 * c0 + 55 * c1 + c3 + rnd ) >> nShift;
+        pDst[i*MAX_CU_SIZE+1] = ( 55 * c2 - 29 * c1 + c3 + rnd ) >> nShift;
+        pDst[i*MAX_CU_SIZE+2] = ( 74 * c4                + rnd ) >> nShift;
+        pDst[i*MAX_CU_SIZE+3] = ( 55 * c0 + 29 * c2 - c3 + rnd ) >> nShift;
+
 #if IT_CLIPPING
-        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, ( 29 * c0 + 55 * c1 + c3 + rnd ) >> nShift );
-        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, ( 55 * c2 - 29 * c1 + c3 + rnd ) >> nShift );
-        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, ( 74 * c4                + rnd ) >> nShift );
-        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, ( 55 * c0 + 29 * c2 - c3 + rnd ) >> nShift );
-#else
-#error Please sync the code!
+        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+0] );
+        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+1] );
+        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+2] );
+        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+3] );
 #endif
   }
 }
