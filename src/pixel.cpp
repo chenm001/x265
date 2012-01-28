@@ -281,9 +281,7 @@ UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
     const UInt nQpMod6 = nQP % 6;
     UInt uiLog2TrSize = xLog2( iWidth - 1);
     UInt uiQ = g_quantScales[nQpMod6];
-
-    UInt uiBitDepth = 8;
-    UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize;  // Represents scaling through forward transform
+    UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - 8 - uiLog2TrSize;  // Represents scaling through forward transform
     Int iQBits = QUANT_SHIFT + nQpDiv6 + iTransformShift;
 
     Int32 iRnd = (eSType == SLICE_I ? 171 : 85) << (iQBits-9);
@@ -314,8 +312,7 @@ void xDeQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
     const UInt nQpDiv6 = nQP / 6;
     const UInt nQpMod6 = nQP % 6;
     UInt uiLog2TrSize = xLog2( iWidth - 1 );
-    UInt uiBitDepth = 8;
-    UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize;  // Represents scaling through forward transform
+    UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - 8 - uiLog2TrSize;  // Represents scaling through forward transform
     Int nShift = nShift = QUANT_IQUANT_SHIFT - QUANT_SHIFT - iTransformShift;
     Int32 iRnd = 1 << (nShift-1);
     Int iScale = g_invQuantScales[nQpMod6] << nQpDiv6;
