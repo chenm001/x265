@@ -464,6 +464,81 @@ void xInvDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
+/** 32x32 inverse transform implemented using partial butterfly structure (1D)
+ *  \param pSrc   input data (residual)
+ *  \param pDst   output data (transpose transform coefficients)
+ *  \param nLines transform lines
+ *  \param nShift specifies right shift after 1D transform
+ */
+void xInvDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i,k;
+    Int32 E[16],O[16];
+    Int32 EE[8],EO[8];
+    Int32 EEE[4],EEO[4];
+    Int32 EEEE[2],EEEO[2];
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<32; i++ ) {
+        /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+        for( k=0; k<16; k++ ) {
+            O[k] =   g_aiT32[ 1*32+k]*pSrc[ 1*MAX_CU_SIZE+i] + g_aiT32[ 3*32+k]*pSrc[ 3*MAX_CU_SIZE+i]
+                   + g_aiT32[ 5*32+k]*pSrc[ 5*MAX_CU_SIZE+i] + g_aiT32[ 7*32+k]*pSrc[ 7*MAX_CU_SIZE+i]
+                   + g_aiT32[ 9*32+k]*pSrc[ 9*MAX_CU_SIZE+i] + g_aiT32[11*32+k]*pSrc[11*MAX_CU_SIZE+i]
+                   + g_aiT32[13*32+k]*pSrc[13*MAX_CU_SIZE+i] + g_aiT32[15*32+k]*pSrc[15*MAX_CU_SIZE+i]
+                   + g_aiT32[17*32+k]*pSrc[17*MAX_CU_SIZE+i] + g_aiT32[19*32+k]*pSrc[19*MAX_CU_SIZE+i]
+                   + g_aiT32[21*32+k]*pSrc[21*MAX_CU_SIZE+i] + g_aiT32[23*32+k]*pSrc[23*MAX_CU_SIZE+i]
+                   + g_aiT32[25*32+k]*pSrc[25*MAX_CU_SIZE+i] + g_aiT32[27*32+k]*pSrc[27*MAX_CU_SIZE+i]
+                   + g_aiT32[29*32+k]*pSrc[29*MAX_CU_SIZE+i] + g_aiT32[31*32+k]*pSrc[31*MAX_CU_SIZE+i];
+        }
+
+        for( k=0; k<8; k++ ) {
+            EO[k] =   g_aiT32[ 2*32+k]*pSrc[ 2*MAX_CU_SIZE+i] + g_aiT32[ 6*32+k]*pSrc[ 6*MAX_CU_SIZE+i]
+                    + g_aiT32[10*32+k]*pSrc[10*MAX_CU_SIZE+i] + g_aiT32[14*32+k]*pSrc[14*MAX_CU_SIZE+i]
+                    + g_aiT32[18*32+k]*pSrc[18*MAX_CU_SIZE+i] + g_aiT32[22*32+k]*pSrc[22*MAX_CU_SIZE+i]
+                    + g_aiT32[26*32+k]*pSrc[26*MAX_CU_SIZE+i] + g_aiT32[30*32+k]*pSrc[30*MAX_CU_SIZE+i];
+        }
+
+        for( k=0; k<4; k++ ) {
+            EEO[k] =   g_aiT32[ 4*32+k]*pSrc[ 4*MAX_CU_SIZE+i] + g_aiT32[12*32+k]*pSrc[12*MAX_CU_SIZE+i]
+                     + g_aiT32[20*32+k]*pSrc[20*MAX_CU_SIZE+i] + g_aiT32[28*32+k]*pSrc[28*MAX_CU_SIZE+i];
+        }
+        EEEO[0] = g_aiT32[8*32+0]*pSrc[8*MAX_CU_SIZE+i] + g_aiT32[24*32+0]*pSrc[24*MAX_CU_SIZE+i];
+        EEEO[1] = g_aiT32[8*32+1]*pSrc[8*MAX_CU_SIZE+i] + g_aiT32[24*32+1]*pSrc[24*MAX_CU_SIZE+i];
+        EEEE[0] = g_aiT32[0*32+0]*pSrc[0*MAX_CU_SIZE+i] + g_aiT32[16*32+0]*pSrc[16*MAX_CU_SIZE+i];
+        EEEE[1] = g_aiT32[0*32+1]*pSrc[0*MAX_CU_SIZE+i] + g_aiT32[16*32+1]*pSrc[16*MAX_CU_SIZE+i];
+
+        /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+        EEE[0] = EEEE[0] + EEEO[0];
+        EEE[3] = EEEE[0] - EEEO[0];
+        EEE[1] = EEEE[1] + EEEO[1];
+        EEE[2] = EEEE[1] - EEEO[1];
+
+        EE[0] = EEE[0] + EEO[0];
+        EE[7] = EEE[0] - EEO[0];
+        EE[1] = EEE[1] + EEO[1];
+        EE[6] = EEE[1] - EEO[1];
+        EE[5] = EEE[2] - EEO[2];
+        EE[2] = EEE[2] + EEO[2];
+        EE[3] = EEE[3] + EEO[3];
+        EE[4] = EEE[3] - EEO[3];
+
+        for( k=0; k<8; k++ ) {
+            E[k  ] = EE[k  ] + EO[k  ];
+            E[k+8] = EE[7-k] - EO[7-k];
+        }
+
+        for( k=0; k<16; k++ ) {
+            pDst[i*MAX_CU_SIZE+k   ] = (E[k   ] + O[k   ] + rnd) >> nShift;
+            pDst[i*MAX_CU_SIZE+k+16] = (E[15-k] - O[15-k] + rnd) >> nShift;
+#if IT_CLIPPING
+            pDst[i*MAX_CU_SIZE+k   ] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+k   ]);
+            pDst[i*MAX_CU_SIZE+k+16] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+k+16]);
+#endif
+        }
+    }
+}
+
 UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
 {
     int x, y;
