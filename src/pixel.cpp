@@ -333,6 +333,50 @@ void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
   }
 }
 
+void xInvDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+{
+    int i;
+    int rnd = 1<<(nShift-1);
+
+    for( i=0; i<nLines; i++ ) {
+        /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+        Int32 O0 = g_aiT8[1*8+0]*pSrc[1*MAX_CU_SIZE+i] + g_aiT8[3*8+0]*pSrc[3*MAX_CU_SIZE+i] + g_aiT8[5*8+0]*pSrc[5*MAX_CU_SIZE+i] + g_aiT8[7*8+0]*pSrc[7*MAX_CU_SIZE+i];
+        Int32 O1 = g_aiT8[1*8+1]*pSrc[1*MAX_CU_SIZE+i] + g_aiT8[3*8+1]*pSrc[3*MAX_CU_SIZE+i] + g_aiT8[5*8+1]*pSrc[5*MAX_CU_SIZE+i] + g_aiT8[7*8+1]*pSrc[7*MAX_CU_SIZE+i];
+        Int32 O2 = g_aiT8[1*8+2]*pSrc[1*MAX_CU_SIZE+i] + g_aiT8[3*8+2]*pSrc[3*MAX_CU_SIZE+i] + g_aiT8[5*8+2]*pSrc[5*MAX_CU_SIZE+i] + g_aiT8[7*8+2]*pSrc[7*MAX_CU_SIZE+i];
+        Int32 O3 = g_aiT8[1*8+3]*pSrc[1*MAX_CU_SIZE+i] + g_aiT8[3*8+3]*pSrc[3*MAX_CU_SIZE+i] + g_aiT8[5*8+3]*pSrc[5*MAX_CU_SIZE+i] + g_aiT8[7*8+3]*pSrc[7*MAX_CU_SIZE+i];
+
+        Int32 EO0 = g_aiT8[2*8+0]*pSrc[2*MAX_CU_SIZE+i] + g_aiT8[6*8+0]*pSrc[6*MAX_CU_SIZE+i];
+        Int32 EO1 = g_aiT8[2*8+1]*pSrc[2*MAX_CU_SIZE+i] + g_aiT8[6*8+1]*pSrc[6*MAX_CU_SIZE+i];
+        Int32 EE0 = g_aiT8[0*8+0]*pSrc[0*MAX_CU_SIZE+i] + g_aiT8[4*8+0]*pSrc[4*MAX_CU_SIZE+i];
+        Int32 EE1 = g_aiT8[0*8+1]*pSrc[0*MAX_CU_SIZE+i] + g_aiT8[4*8+1]*pSrc[4*MAX_CU_SIZE+i];
+
+        /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+        Int32 E0 = EE0 + EO0;
+        Int32 E3 = EE0 - EO0;
+        Int32 E1 = EE1 + EO1;
+        Int32 E2 = EE1 - EO1;
+
+        pDst[i*MAX_CU_SIZE+0] = (E0 + O0 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+1] = (E1 + O1 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+2] = (E2 + O2 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+3] = (E3 + O3 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+4] = (E3 - O3 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+5] = (E2 - O2 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+6] = (E1 - O1 + rnd) >> nShift;
+        pDst[i*MAX_CU_SIZE+7] = (E0 - O0 + rnd) >> nShift;
+#if IT_CLIPPING
+        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+0] );
+        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+1] );
+        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+2] );
+        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+3] );
+        pDst[i*MAX_CU_SIZE+4] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+4] );
+        pDst[i*MAX_CU_SIZE+5] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+5] );
+        pDst[i*MAX_CU_SIZE+6] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+6] );
+        pDst[i*MAX_CU_SIZE+7] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+7] );
+#endif
+    }
+}
+
 UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
 {
     int x, y;
