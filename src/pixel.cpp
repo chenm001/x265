@@ -277,12 +277,14 @@ UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
 {
     int x, y;
     UInt32 uiAcSum = 0;
+    const UInt nQpDiv6 = nQP / 6;
+    const UInt nQpMod6 = nQP % 6;
     UInt uiLog2TrSize = xLog2( iWidth - 1);
-    UInt uiQ = g_quantScales[nQP % 6];
+    UInt uiQ = g_quantScales[nQpMod6];
 
     UInt uiBitDepth = 8;
     UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize;  // Represents scaling through forward transform
-    Int iQBits = QUANT_SHIFT + (nQP / 6) + iTransformShift;
+    Int iQBits = QUANT_SHIFT + nQpDiv6 + iTransformShift;
 
     Int32 iRnd = (eSType == SLICE_I ? 171 : 85) << (iQBits-9);
 
