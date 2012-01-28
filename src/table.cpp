@@ -195,3 +195,8 @@ const Int8 g_as_DST_MAT_4 [4*4]= {
 const Int16 g_quantScales[6] = {
     26214,23302,20560,18396,16384,14564
 };    
+
+// TBD: 8.5.3 ?
+const UInt8 g_invQuantScales[6] = {
+    40, 45, 51, 57, 64, 72
+};

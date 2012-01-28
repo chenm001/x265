@@ -307,3 +307,24 @@ UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
     }
     return uiAcSum;
 }
+
+void xDeQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
+{
+    int x, y;
+    const UInt nQpDiv6 = nQP / 6;
+    const UInt nQpMod6 = nQP % 6;
+    UInt uiLog2TrSize = xLog2( iWidth - 1 );
+    UInt uiBitDepth = 8;
+    UInt iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize;  // Represents scaling through forward transform
+    Int nShift = nShift = QUANT_IQUANT_SHIFT - QUANT_SHIFT - iTransformShift;
+    Int32 iRnd = 1 << (nShift-1);
+    Int iScale = g_invQuantScales[nQpMod6] << nQpDiv6;
+
+    for( y=0; y < iHeight; y++ ) {
+        for( x=0; x < iWidth; x++ ) {
+            UInt nBlockPos = y * MAX_CU_SIZE + x;
+            Int32 iCoeffQ = ( pSrc[nBlockPos] * iScale + iRnd ) >> nShift;
+            pDst[nBlockPos] = Clip3(-32768, 32767, iCoeffQ);
+        }
+    }
+}
