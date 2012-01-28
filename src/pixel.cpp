@@ -273,6 +273,30 @@ void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
+void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
+{
+    int i;
+    int rnd = 1 << (nShift-1);
+
+    for( i=0; i<4; i++ ) {
+        // Intermediate Variables
+        Int32 c0 = pSrc[0*MAX_CU_SIZE+i] + pSrc[2*MAX_CU_SIZE+i];
+        Int32 c1 = pSrc[2*MAX_CU_SIZE+i] + pSrc[3*MAX_CU_SIZE+i];
+        Int32 c2 = pSrc[0*MAX_CU_SIZE+i] - pSrc[3*MAX_CU_SIZE+i];
+        Int32 c3 = 74* pSrc[1*MAX_CU_SIZE+i];
+        Int32 c4 = pSrc[0*MAX_CU_SIZE+i] - pSrc[2*MAX_CU_SIZE+i] + pSrc[3*MAX_CU_SIZE+i];
+
+#if IT_CLIPPING
+        pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, ( 29 * c0 + 55 * c1 + c3 + rnd ) >> nShift );
+        pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, ( 55 * c2 - 29 * c1 + c3 + rnd ) >> nShift );
+        pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, ( 74 * c4                + rnd ) >> nShift );
+        pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, ( 55 * c0 + 29 * c2 - c3 + rnd ) >> nShift );
+#else
+#error Please sync the code!
+#endif
+  }
+}
+
 UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
 {
     int x, y;

@@ -78,6 +78,7 @@
 #endif
 #define MRG_MAX_NUM_CANDS               5           // MERGE
 #define LEVEL_LIMIT                     1           ///< G719 : Restriction for limits to 16 bits (signed) diapason
+#define IT_CLIPPING                     1           ///< G782 : Clipping in inverse transform
 #define PADDING_INTRA                   1           ///< G812: padding from bottom left, copy previous pixel instead of averaging
 ////////////////////////////
 // JCT-VC G end
