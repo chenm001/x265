@@ -28,7 +28,7 @@
 static int xLog2(UInt32 x)
 {
     UInt32 log2Size = 0;
-    while(x >= 1) {
+    while(x > 0) {
         x >>= 1;
         log2Size++;
     }
