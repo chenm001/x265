@@ -49,6 +49,14 @@ typedef enum {
     REF_PIC_LIST_C =  2,    ///< combined reference list for uni-prediction in B-Slices
 } X265_RefPicList;
 
+/// chroma formats (according to semantics of chroma_format_idc)
+typedef enum {
+    CHROMA_400  = 0,
+    CHROMA_420  = 1,
+    CHROMA_422  = 2,
+    CHROMA_444  = 3
+} eChromaFormat;
+
 /// reference frame
 typedef struct X265_Frame {
     UInt8   *pucY;
