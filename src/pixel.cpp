@@ -53,11 +53,24 @@ UInt32 xSad32xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     return uiSad;
 }
 
+UInt32 xSad16xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+{
+    Int x, y;
+    UInt32 uiSad = 0;
+
+    for( y=0; y<N; y++ ) {
+        for( x=0; x<16; x++ ) {
+            uiSad += abs(pSrc[y * nStrideSrc + x] - pRef[y * nStrideRef + x]);
+        }
+    }
+    return uiSad;
+}
+
 xSad *xSadN[MAX_CU_DEPTH+2] = {
     NULL,       /*  2 x N */
     NULL,       /*  4 x N */
     NULL,       /*  8 x N */
-    NULL,       /* 16 x N */
+    xSad16xN,   /* 16 x N */
     xSad32xN,   /* 32 x N */
     xSad64xN,   /* 64 x N */
 };
