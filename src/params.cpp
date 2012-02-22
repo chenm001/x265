@@ -43,9 +43,7 @@ void xDefaultParams(X265_t *h)
     h->ucQuadtreeTUMaxDepthIntra    =  1;
     h->ucMaxNumRefFrames            =  1;
     h->ucBitsForPOC                 =  8;
-#if G091_SIGNAL_MAX_NUM_MERGE_CANDS
     h->ucMaxNumMergeCand            = MRG_MAX_NUM_CANDS_SIGNALED;
-#endif
 
     // Feature
     h->bUseNewRefSetting            = FALSE;

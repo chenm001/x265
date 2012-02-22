@@ -170,14 +170,11 @@ void xWriteSPS( X265_t *h )
     xWriteRBSPTrailingBits(pBS);
 }
 
-#if G1002_RPS
 static void xWriteShortTermRefPicSet( X265_t *h )
 {
     X265_BitStream *pBS = &h->bs;
     int i;
-#if INTER_RPS_PREDICTION
     WRITE_FLAG( 0, "inter_ref_pic_set_prediction_flag" ); // inter_RPS_prediction_flag
-#endif //INTER_RPS_PREDICTION
     // Turn off inter_ref_pic_set_prediction_flag
     {
         WRITE_UVLC( h->ucMaxNumRefFrames,   "num_negative_pics" );
@@ -188,7 +185,6 @@ static void xWriteShortTermRefPicSet( X265_t *h )
         }
     }
 }
-#endif
 
 void xWritePPS( X265_t *h )
 {
@@ -200,7 +196,6 @@ void xWritePPS( X265_t *h )
   
     WRITE_UVLC( 0,  "pic_parameter_set_id" );
     WRITE_UVLC( 0,  "seq_parameter_set_id" );
-#if G1002_RPS
   // RPS is put before entropy_coding_mode_flag
   // since entropy_coding_mode_flag will probably be removed from the WD
 
@@ -209,37 +204,22 @@ void xWritePPS( X265_t *h )
         xWriteShortTermRefPicSet(h);
     }    
     WRITE_FLAG( 0,  "long_term_ref_pics_present_flag" );
-#endif
     // entropy_coding_mode_flag
-#if OL_USE_WPP
     // We code the entropy_coding_mode_flag, it's needed for tests.
     WRITE_FLAG( 1,                                          "entropy_coding_mode_flag" );
     WRITE_UVLC( 0,                                          "entropy_coding_synchro" );
     WRITE_FLAG( 0,                                          "cabac_istate_reset" );
-#endif
     WRITE_UVLC( 0,                                          "num_temporal_layer_switching_point_flags" );
     //   num_ref_idx_l0_default_active_minus1
     //   num_ref_idx_l1_default_active_minus1
     //   pic_init_qp_minus26  /* relative to 26 */
     WRITE_FLAG( 0,                                          "constrained_intra_pred_flag" );
-#if FINE_GRANULARITY_SLICES
     WRITE_CODE( 0, 2,                                       "slice_granularity");
-#endif
-#if !F747_APS
-    WRITE_FLAG( 1,                                          "shared_pps_info_enabled_flag" );
-    //   if( shared_pps_info_enabled_flag )
-    //     if( adaptive_loop_filter_enabled_flag )
-    //       alf_param( )
-#endif
 
-#if WEIGHT_PRED
     WRITE_FLAG( 0,    "weighted_pred_flat" );   // Use of Weighting Prediction (P_SLICE)
     WRITE_CODE( 0, 2, "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
-#endif
 
-#if TILES
     WRITE_FLAG( 0, "tile_info_present_flag" );
-#endif
     xWriteRBSPTrailingBits(pBS);
 }
 
@@ -259,7 +239,6 @@ void xWriteSliceHeader( X265_t *h )
   
     WRITE_UVLC( h->eSliceType,  "slice_type" );
     WRITE_UVLC( 0,              "pic_parameter_set_id" );
-#if G1002_RPS
     if ( h->eSliceType == SLICE_I ) {
       WRITE_UVLC( 0, "idr_pic_id" );
       WRITE_FLAG( 0, "no_output_of_prior_pics_flag" );
@@ -269,24 +248,6 @@ void xWriteSliceHeader( X265_t *h )
       WRITE_FLAG( 1, "short_term_ref_pic_set_pps_flag");
       WRITE_UVLC( 0, "short_term_ref_pic_set_idx" );
     }
-#endif
-
-#if !G1002_RPS
-    // frame_num
-    // if( IdrPicFlag )
-    //   idr_pic_id
-    // if( pic_order_cnt_type  = =  0 )
-    //   pic_order_cnt_lsb  
-    WRITE_CODE( h->uiPoc, 10, "pic_order_cnt_lsb" );   //  9 == SPS->Log2MaxFrameNum
-    // if( slice_type  = =  P  | |  slice_type  = =  B ) {
-    //   num_ref_idx_active_override_flag
-    //   if( num_ref_idx_active_override_flag ) {
-    //     num_ref_idx_l0_active_minus1
-    //     if( slice_type  = =  B )
-    //       num_ref_idx_l1_active_minus1
-    //   }
-    // }
-#endif
 
     // we always set num_ref_idx_active_override_flag equal to one. this might be done in a more intelligent way 
     if ( h->eSliceType != SLICE_I ) {
@@ -296,18 +257,13 @@ void xWriteSliceHeader( X265_t *h )
     else {
     }
 
-#if G1002_RPS
     if ( h->eSliceType != SLICE_I ) {
         WRITE_FLAG(0, "ref_pic_list_modification_flag" );    
     }
     if ( h->eSliceType == SLICE_B ) {
         WRITE_FLAG(0, "ref_pic_list_modification_flag" );
     }
-#endif
 
-#if !G1002_RPS
-    // ref_pic_list_modification( )
-#endif
     // ref_pic_list_combination( )
     // maybe move to own function?
     if ( h->eSliceType == SLICE_B ) {
@@ -347,11 +303,9 @@ void xWriteSliceHeader( X265_t *h )
     // ????
     WRITE_FLAG(1, "DRBFlag");
 
-#if G091_SIGNAL_MAX_NUM_MERGE_CANDS
     assert( h->ucMaxNumMergeCand <= MRG_MAX_NUM_CANDS_SIGNALED );
     assert( MRG_MAX_NUM_CANDS_SIGNALED <= MRG_MAX_NUM_CANDS );
     WRITE_UVLC(MRG_MAX_NUM_CANDS - h->ucMaxNumMergeCand, "maxNumMergeCand");
-#endif
     xWriteAlignOne(pBS);
 }
 

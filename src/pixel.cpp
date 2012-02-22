@@ -310,12 +310,10 @@ void xInvDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         pDst[i*MAX_CU_SIZE+2] = (E1 - O1 + rnd) >> nShift;
         pDst[i*MAX_CU_SIZE+3] = (E0 - O0 + rnd) >> nShift;
 
-#if IT_CLIPPING
         pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+0] );
         pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+1] );
         pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+2] );
         pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+3] );
-#endif
     }
 }
 
@@ -337,12 +335,10 @@ void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
         pDst[i*MAX_CU_SIZE+2] = ( 74 * c4                + rnd ) >> nShift;
         pDst[i*MAX_CU_SIZE+3] = ( 55 * c0 + 29 * c2 - c3 + rnd ) >> nShift;
 
-#if IT_CLIPPING
         pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+0] );
         pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+1] );
         pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+2] );
         pDst[i*MAX_CU_SIZE+3] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+3] );
-#endif
   }
 }
 
@@ -377,7 +373,6 @@ void xInvDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         pDst[i*MAX_CU_SIZE+5] = (E2 - O2 + rnd) >> nShift;
         pDst[i*MAX_CU_SIZE+6] = (E1 - O1 + rnd) >> nShift;
         pDst[i*MAX_CU_SIZE+7] = (E0 - O0 + rnd) >> nShift;
-#if IT_CLIPPING
         pDst[i*MAX_CU_SIZE+0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+0] );
         pDst[i*MAX_CU_SIZE+1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+1] );
         pDst[i*MAX_CU_SIZE+2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+2] );
@@ -386,7 +381,6 @@ void xInvDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         pDst[i*MAX_CU_SIZE+5] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+5] );
         pDst[i*MAX_CU_SIZE+6] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+6] );
         pDst[i*MAX_CU_SIZE+7] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+7] );
-#endif
     }
 }
 
@@ -456,7 +450,6 @@ void xInvDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         pDst[i*MAX_CU_SIZE+ 7] = (E7 + O7 + rnd) >> nShift;
         pDst[i*MAX_CU_SIZE+ 8] = (E7 - O7 + rnd) >> nShift;
 
-#if IT_CLIPPING
         pDst[i*MAX_CU_SIZE+ 0] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 0] );
         pDst[i*MAX_CU_SIZE+ 1] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 1] );
         pDst[i*MAX_CU_SIZE+ 2] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+ 2] );
@@ -473,7 +466,6 @@ void xInvDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         pDst[i*MAX_CU_SIZE+13] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+13] );
         pDst[i*MAX_CU_SIZE+14] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+14] );
         pDst[i*MAX_CU_SIZE+15] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+15] );
-#endif
     }
 }
 
@@ -544,10 +536,8 @@ void xInvDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         for( k=0; k<16; k++ ) {
             pDst[i*MAX_CU_SIZE+k   ] = (E[k   ] + O[k   ] + rnd) >> nShift;
             pDst[i*MAX_CU_SIZE+k+16] = (E[15-k] - O[15-k] + rnd) >> nShift;
-#if IT_CLIPPING
             pDst[i*MAX_CU_SIZE+k   ] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+k   ]);
             pDst[i*MAX_CU_SIZE+k+16] = Clip3( -32768, 32767, pDst[i*MAX_CU_SIZE+k+16]);
-#endif
         }
     }
 }
@@ -577,9 +567,7 @@ UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
             uiAcSum += iLevel;
             iLevel *= iSign;        
             pDst[nBlockPos] = iLevel;
-#if LEVEL_LIMIT
             pDst[nBlockPos] = Clip3(-32768, 32767, pDst[nBlockPos]);
-#endif
         }
     }
     return uiAcSum;

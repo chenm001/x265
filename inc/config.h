@@ -61,68 +61,30 @@
 ////////////////////////////
 
 ////////////////////////////
-// JCT-VC G start
+// JCT-VC H start
 ////////////////////////////
-#define G1002_RPS                       1
-#if  !G1002_RPS
-#define REF_SETTING_FOR_LD              1           // reference frame setting for low delay setting (JCTVC-F701)
-#else
-#define INTER_RPS_PREDICTION            1           // remove this once tested.
-#define WRITE_BACK                      1           ///< Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
-#define PRINT_RPS_BITS_WRITTEN          0           ///< Enable/disable the printing of bits used to send the RPS.
-#endif
-#define OL_USE_WPP                      1     // Set to 1 to enable Wavefront Parallel Processing, 0 otherwise
-#define G091_SIGNAL_MAX_NUM_MERGE_CANDS 1           //<G091: maxNumMergeCand signaling in slice header
-#if G091_SIGNAL_MAX_NUM_MERGE_CANDS
-#define MRG_MAX_NUM_CANDS_SIGNALED      5           //<G091: value of maxNumMergeCand signaled in slice header 
-#endif
-#define MRG_MAX_NUM_CANDS               5           // MERGE
-#define LEVEL_LIMIT                     1           ///< G719 : Restriction for limits to 16 bits (signed) diapason
-#define IT_CLIPPING                     1           ///< G782 : Clipping in inverse transform
-#define PADDING_INTRA                   1           ///< G812: padding from bottom left, copy previous pixel instead of averaging
+#define MULTIBITS_DATA_HIDING           1  ///< H0481: multiple sign bit hiding
 ////////////////////////////
 // JCT-VC G end
 ////////////////////////////
 
-
 ////////////////////////////
-// JCT-VC F start
+// JCT-VC G start
 ////////////////////////////
-#define DISABLE_4x4_INTER                   1       // Coding one flag into SPS to enable/disable INTER4x4 
-#define NSQT                                1       // F410 & F412 : Non-Square Quadtree Transform
-#define REF_SETTING_FOR_LD                  1       // reference frame setting for low delay setting (JCTVC-F701)
-                                                    // using one nearest frame as reference frame, and the other frames are high quality (POC%4==0) frames (1+X)
-                                                    // this should be done with encoder only decision
-                                                    // but because of the absence of reference frame management, the related code was hard coded currently
-#define AMP                                 1       ///< JCTVC-F379: asymmetric motion partition
-#define F747_APS                            1       // F747 : Adaptation Parameter Set (APS)
-#define WEIGHT_PRED                         1       ///< F265 & F326: enable weighted prediction
-#define PLANAR_F483                         1       ///< Modify samples used for planar prediction as per JCTVC-F483
+#define MRG_MAX_NUM_CANDS_SIGNALED      5           //<G091: value of maxNumMergeCand signaled in slice header 
+#define MRG_MAX_NUM_CANDS               5           // MERGE
 ////////////////////////////
-// JCT-VC F end
-////////////////////////////
-
-
-////////////////////////////
-// JCT-VC E start
-////////////////////////////
-#define E192_SPS_PCM_BIT_DEPTH_SYNTAX       1       // JCTVC-E192: PCM bit depth
-#define E192_SPS_PCM_FILTER_DISABLE_SYNTAX  1       // JCTVC-E192: PCM filter disable flag
-#define SAO                                 1       // JCTVC-E049: Sample adaptive offset
-////////////////////////////
-// JCT-VC E end
+// JCT-VC G end
 ////////////////////////////
 
 
 /////////////////////////////////
 // AHG SLICES defines section start
 /////////////////////////////////
-#define FINE_GRANULARITY_SLICES             1
 
 /////////////////////////////////
 // AHG SLICES defines section end
 /////////////////////////////////
-#define TILES                               1
 
 
 typedef unsigned char       UInt8;

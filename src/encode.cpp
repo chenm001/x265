@@ -252,7 +252,6 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
             }
         }
 
-#if PADDING_INTRA
         // Padding from Right to Left
         for( n=0; n<ASIZE(bValid); n++ ) {
             if (bValid[n])
@@ -274,9 +273,6 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 }
             }
         }
-#else
-#error Please sync the code!
-#endif
 
         // Filter with [1 2 1]
         pucRefY1[0      ] = pucRefY0[0];
@@ -294,9 +290,6 @@ void xPredIntraPlanar(
     UInt     nSize
 )
 {
-#if !PLANAR_F483
-#error Please sync code
-#endif
     UInt nLog2Size = xLog2(nSize - 1);
     UInt8 *pucLeft = pucRef + 2 * nSize - 1;
     UInt8 *pucTop  = pucRef + 2 * nSize + 1;
