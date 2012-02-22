@@ -133,7 +133,7 @@ static void xWriteCode( X265_BitStream *pBS, UInt32 uiCode, UInt32 uiLength )
 
 static void xWriteUvlc( X265_BitStream *pBS, UInt32 uiCode )
 {
-    UInt32 uiLength = xLog2(++uiCode);
+    UInt32 uiLength = xLog2(++uiCode) - 1;
 
     xPutBits( pBS, 0,       uiLength);
     xPutBits( pBS, uiCode, (uiLength+1));
