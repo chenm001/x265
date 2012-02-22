@@ -112,8 +112,8 @@ void xWriteSPS( X265_t *h )
     WRITE_UVLC( 0,                                      "seq_parameter_set_id" );
     WRITE_UVLC( CHROMA_420,                             "chroma_format_idc" );
     WRITE_CODE( 0,                          3,          "max_temporal_layers_minus1" );
-    WRITE_CODE( h->usWidth,                16,          "pic_width_in_luma_samples" );
-    WRITE_CODE( h->usHeight,               16,          "pic_height_in_luma_samples" );
+    WRITE_UVLC( h->usWidth,                16,          "pic_width_in_luma_samples" );
+    WRITE_UVLC( h->usHeight,               16,          "pic_height_in_luma_samples" );
     
     WRITE_UVLC( 0,                                      "bit_depth_luma_minus8" );
     WRITE_UVLC( 0,                                      "bit_depth_chroma_minus8" );
@@ -127,7 +127,7 @@ void xWriteSPS( X265_t *h )
     WRITE_UVLC(0,                                       "max_latency_increase"    );
 
     UInt32 MinCUSize = h->ucMaxCUWidth >> (h->ucMaxCUDepth - 1);
-    UInt32 log2MinCUSize = xLog2(MinCUSize);
+    UInt32 log2MinCUSize = xLog2(MinCUSize)-1;
 
     WRITE_UVLC( log2MinCUSize - 3,                                                    "log2_min_coding_block_size_minus3" );
     WRITE_UVLC( h->ucMaxCUDepth - 1,                                                  "log2_diff_max_min_coding_block_size" );
@@ -148,11 +148,11 @@ void xWriteSPS( X265_t *h )
 
     //!!!KS: Syntax not in WD !!!
 
-    WRITE_UVLC  ( 0, "PadX" );
-    WRITE_UVLC  ( 0, "PadY" );
+    WRITE_UVLC( 0, "PadX" );
+    WRITE_UVLC( 0, "PadY" );
     
     // Tools
-    WRITE_FLAG  ( 1,  "SOPH/MRG" ); // SOPH:
+    WRITE_FLAG( h->bMRG,  "SOPH/MRG" ); // SOPH:
     
     // AMVP mode for each depth
     for (i = 0; i < h->ucMaxCUDepth; i++) {
@@ -173,17 +173,12 @@ void xWriteSPS( X265_t *h )
 static void xWriteShortTermRefPicSet( X265_t *h )
 {
     X265_BitStream *pBS = &h->bs;
-    int i;
+
     WRITE_FLAG( 0, "inter_ref_pic_set_prediction_flag" ); // inter_RPS_prediction_flag
-    // Turn off inter_ref_pic_set_prediction_flag
-    {
-        WRITE_UVLC( h->ucMaxNumRefFrames,   "num_negative_pics" );
-        WRITE_UVLC( 0,                      "num_positive_pics" );
-        for( i=0 ; i < h->ucMaxNumRefFrames; i++ ) {
-            WRITE_UVLC( (1-i)-1, "delta_poc_s0_minus1" );
-            WRITE_FLAG( 1,       "used_by_curr_pic_s0_flag"); 
-        }
-    }
+    WRITE_UVLC( 1, "num_negative_pics" );
+    WRITE_UVLC( 0, "num_positive_pics" );
+    WRITE_UVLC( 0, "delta_poc_s0_minus1" );
+    WRITE_FLAG( 1, "used_by_curr_pic_s0_flag"); 
 }
 
 void xWritePPS( X265_t *h )
@@ -196,13 +191,16 @@ void xWritePPS( X265_t *h )
   
     WRITE_UVLC( 0,  "pic_parameter_set_id" );
     WRITE_UVLC( 0,  "seq_parameter_set_id" );
-  // RPS is put before entropy_coding_mode_flag
-  // since entropy_coding_mode_flag will probably be removed from the WD
+
+#if MULTIBITS_DATA_HIDING
+    WRITE_FLAG( h->bSignHideFlag, "sign_data_hiding_flag" );
+    if( h->bSignHideFlag ) {
+        WRITE_CODE(h->ucTSIG, 4, "sign_hiding_threshold");
+    }
+#endif
 
     WRITE_UVLC(h->ucMaxNumRefFrames, "num_short_term_ref_pic_sets" );
-    for( i=0; i < h->ucMaxNumRefFrames; i++ ) {
-        xWriteShortTermRefPicSet(h);
-    }    
+    xWriteShortTermRefPicSet(h);
     WRITE_FLAG( 0,  "long_term_ref_pics_present_flag" );
     // entropy_coding_mode_flag
     // We code the entropy_coding_mode_flag, it's needed for tests.
@@ -210,16 +208,22 @@ void xWritePPS( X265_t *h )
     WRITE_UVLC( 0,                                          "entropy_coding_synchro" );
     WRITE_FLAG( 0,                                          "cabac_istate_reset" );
     WRITE_UVLC( 0,                                          "num_temporal_layer_switching_point_flags" );
-    //   num_ref_idx_l0_default_active_minus1
-    //   num_ref_idx_l1_default_active_minus1
-    //   pic_init_qp_minus26  /* relative to 26 */
+    // num_ref_idx_l0_default_active_minus1
+    // num_ref_idx_l1_default_active_minus1
+    WRITE_SVLC( 0/*h->iQP - 26*/,                           "pic_init_qp_minus26");
     WRITE_FLAG( 0,                                          "constrained_intra_pred_flag" );
+    WRITE_FLAG( h->bEnableTMVPFlag,                         "enable_temporal_mvp_flag" );
     WRITE_CODE( 0, 2,                                       "slice_granularity");
+    WRITE_UVLC( 0,                                          "max_cu_qp_delta_depth" );
 
-    WRITE_FLAG( 0,    "weighted_pred_flat" );   // Use of Weighting Prediction (P_SLICE)
-    WRITE_CODE( 0, 2, "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
+    WRITE_SVLC( 0,                                          "chroma_qp_offset"     );
+    WRITE_SVLC( 0,                                          "chroma_qp_offset_2nd" );
 
-    WRITE_FLAG( 0, "tile_info_present_flag" );
+    WRITE_FLAG( 0,                                          "weighted_pred_flag" );   // Use of Weighting Prediction (P_SLICE)
+    WRITE_CODE( 0, 2,                                       "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
+
+    WRITE_FLAG( 0,                                           "tile_info_present_flag" );
+    WRITE_FLAG( 0,                                           "tile_control_present_flag");
     xWriteRBSPTrailingBits(pBS);
 }
 

@@ -134,12 +134,16 @@ typedef struct X265_t {
     UInt8   ucMaxNumRefFrames;
     UInt8   ucBitsForPOC;
     UInt8   ucMaxNumMergeCand;
+    UInt8   ucTSIG;
 
     // Feature
     UInt8   bUseNewRefSetting;
     UInt8   bUseSAO;
     UInt8   bUseLMChroma;
+    UInt8   bMRG;
     UInt8   bLoopFilterDisable;
+    UInt8   bSignHideFlag;
+    UInt8   bEnableTMVPFlag;
 } X265_t;
 
 
