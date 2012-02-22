@@ -239,9 +239,12 @@ void xWriteSliceHeader( X265_t *h )
     //xPutBits(pBS, 1, 1); // output_flag
     //xPutBits(pBS, 1, 4); // reserved_one_4bits
     
-    WRITE_FLAG( 0, "lightweight_slice_flag" );
-  
+    //write slice address
+    WRITE_FLAG( 1,              "first_slice_in_pic_flag" );
+
     WRITE_UVLC( h->eSliceType,  "slice_type" );
+    WRITE_FLAG( 0,              "lightweight_slice_flag" );
+
     WRITE_UVLC( 0,              "pic_parameter_set_id" );
     if ( h->eSliceType == SLICE_I ) {
       WRITE_UVLC( 0, "idr_pic_id" );
@@ -258,32 +261,24 @@ void xWriteSliceHeader( X265_t *h )
         WRITE_FLAG( 1 ,                               "num_ref_idx_active_override_flag");
         WRITE_CODE( h->ucMaxNumRefFrames - 1, 3,      "num_ref_idx_l0_active_minus1" );
     }
-    else {
-    }
 
     if ( h->eSliceType != SLICE_I ) {
         WRITE_FLAG(0, "ref_pic_list_modification_flag" );    
     }
-    if ( h->eSliceType == SLICE_B ) {
-        WRITE_FLAG(0, "ref_pic_list_modification_flag" );
-    }
 
     // ref_pic_list_combination( )
     // maybe move to own function?
-    if ( h->eSliceType == SLICE_B ) {
-        WRITE_FLAG(0, "ref_pic_list_combination_flag" );
+    if ( h->eSliceType != SLICE_I ) {
+        WRITE_UVLC(0,  "cabac_init_idc");
     }
 
-    //write slice address
-    WRITE_FLAG( 1, "first_slice_in_pic_flag" );
-  
-    //   slice_qp
-    WRITE_SVLC( h->iQP, "slice_qp" ); // this should be delta
+    WRITE_SVLC( h->iQP - 26, "slice_qp_delta" );
     //   if( sample_adaptive_offset_enabled_flag )
     //     sao_param()
     //   if( deblocking_filter_control_present_flag ) {
     //     disable_deblocking_filter_idc
-    WRITE_FLAG( h->bLoopFilterDisable, "loop_filter_disable");  // should be an IDC
+    WRITE_FLAG(0, "inherit_dbl_param_from_APS_flag");
+    WRITE_FLAG( h->bLoopFilterDisable, "loop_filter_disable" );  // should be an IDC
 
     //     if( disable_deblocking_filter_idc  !=  1 ) {
     //       slice_alpha_c0_offset_div2
@@ -292,24 +287,22 @@ void xWriteSliceHeader( X265_t *h )
     //   }
     //   if( slice_type = = B )
     //   collocated_from_l0_flag
-    if ( h->eSliceType == SLICE_B ) {
-        WRITE_FLAG( 1, "collocated_from_l0_flag" );
-        }
     //   if( adaptive_loop_filter_enabled_flag ) {
     //     if( !shared_pps_info_enabled_flag )
     //       alf_param( )
     //     alf_cu_control_param( )
     //   }
     // }
-  
-  // !!!! sytnax elements not in the WD !!!!
-  
-    // ????
-    WRITE_FLAG(1, "DRBFlag");
+
+    // !!!! sytnax elements not in the WD !!!!
 
     assert( h->ucMaxNumMergeCand <= MRG_MAX_NUM_CANDS_SIGNALED );
     assert( MRG_MAX_NUM_CANDS_SIGNALED <= MRG_MAX_NUM_CANDS );
     WRITE_UVLC(MRG_MAX_NUM_CANDS - h->ucMaxNumMergeCand, "maxNumMergeCand");
+
+    WRITE_FLAG(0, "encodeTileMarkerFlag");
+    WRITE_FLAG(0, "iTransmitTileLocationInSliceHeader");
+
     xWriteAlignOne(pBS);
 }
 
