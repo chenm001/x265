@@ -85,6 +85,9 @@
 /////////////////////////////////
 // AHG SLICES defines section end
 /////////////////////////////////
+#define H0566_TLA                               1
+#define RPS_IN_SPS                              1 // Adopted during discussion of JCTVC-H0423
+#define H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER 1
 
 
 typedef unsigned char       UInt8;

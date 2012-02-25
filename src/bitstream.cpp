@@ -98,6 +98,17 @@ void  xWriteFlagTr(UInt value, const char *pSymbolName)
 
 
 // ***************************************************************************
+static void xWriteShortTermRefPicSet( X265_t *h )
+{
+    X265_BitStream *pBS = &h->bs;
+
+    WRITE_FLAG( 0, "inter_ref_pic_set_prediction_flag" ); // inter_RPS_prediction_flag
+    WRITE_UVLC( 1, "num_negative_pics" );
+    WRITE_UVLC( 0, "num_positive_pics" );
+    WRITE_UVLC( 0, "delta_poc_s0_minus1" );
+    WRITE_FLAG( 1, "used_by_curr_pic_s0_flag"); 
+}
+
 void xWriteSPS( X265_t *h )
 {
     X265_BitStream *pBS = &h->bs;
@@ -112,8 +123,8 @@ void xWriteSPS( X265_t *h )
     WRITE_UVLC( 0,                                      "seq_parameter_set_id" );
     WRITE_UVLC( CHROMA_420,                             "chroma_format_idc" );
     WRITE_CODE( 0,                          3,          "max_temporal_layers_minus1" );
-    WRITE_UVLC( h->usWidth,                16,          "pic_width_in_luma_samples" );
-    WRITE_UVLC( h->usHeight,               16,          "pic_height_in_luma_samples" );
+    WRITE_UVLC( h->usWidth,                             "pic_width_in_luma_samples" );
+    WRITE_UVLC( h->usHeight,                            "pic_height_in_luma_samples" );
     
     WRITE_UVLC( 0,                                      "bit_depth_luma_minus8" );
     WRITE_UVLC( 0,                                      "bit_depth_chroma_minus8" );
@@ -121,10 +132,13 @@ void xWriteSPS( X265_t *h )
     WRITE_FLAG( 0,                                      "pcm_enabled_flag");
 
     WRITE_UVLC( h->ucBitsForPOC-4,                      "log2_max_pic_order_cnt_lsb_minus4" );
-    WRITE_UVLC( 1,                                      "max_num_ref_pics" ); 
-    WRITE_UVLC( 0,                                      "max_num_reorder_pics" ); 
-    WRITE_UVLC(0,                                       "max_dec_frame_buffering" );
-    WRITE_UVLC(0,                                       "max_latency_increase"    );
+#if H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER
+  WRITE_UVLC( 1,                                        "max_dec_pic_buffering[i]" );
+  WRITE_UVLC( 0,                                        "num_reorder_pics[i]" );
+  WRITE_UVLC( 0,                                        "max_latency_increase[i]" );
+#else
+#error Please Sync Code
+#endif
 
     UInt32 MinCUSize = h->ucMaxCUWidth >> (h->ucMaxCUDepth - 1);
     UInt32 log2MinCUSize = xLog2(MinCUSize)-1;
@@ -146,6 +160,11 @@ void xWriteSPS( X265_t *h )
     WRITE_FLAG( 0,                                                                    "adaptive_loop_filter_enabled_flag");
     WRITE_FLAG( 0,                                                                    "temporal_id_nesting_flag" );
 
+#if RPS_IN_SPS
+    WRITE_UVLC( 1, "num_short_term_ref_pic_sets" );
+    xWriteShortTermRefPicSet( h );
+    WRITE_FLAG( 0, "long_term_ref_pics_present_flag" );
+#endif
     //!!!KS: Syntax not in WD !!!
 
     WRITE_UVLC( 0, "PadX" );
@@ -170,21 +189,9 @@ void xWriteSPS( X265_t *h )
     xWriteRBSPTrailingBits(pBS);
 }
 
-static void xWriteShortTermRefPicSet( X265_t *h )
-{
-    X265_BitStream *pBS = &h->bs;
-
-    WRITE_FLAG( 0, "inter_ref_pic_set_prediction_flag" ); // inter_RPS_prediction_flag
-    WRITE_UVLC( 1, "num_negative_pics" );
-    WRITE_UVLC( 0, "num_positive_pics" );
-    WRITE_UVLC( 0, "delta_poc_s0_minus1" );
-    WRITE_FLAG( 1, "used_by_curr_pic_s0_flag"); 
-}
-
 void xWritePPS( X265_t *h )
 {
     X265_BitStream *pBS = &h->bs;
-    int i;
 #if ENC_DEC_TRACE  
     xTracePPSHeader();
 #endif
@@ -199,15 +206,18 @@ void xWritePPS( X265_t *h )
     }
 #endif
 
-    WRITE_UVLC(h->ucMaxNumRefFrames, "num_short_term_ref_pic_sets" );
-    xWriteShortTermRefPicSet(h);
-    WRITE_FLAG( 0,  "long_term_ref_pics_present_flag" );
+#if !RPS_IN_SPS
+#error Please Sync Code
+#endif
+
     // entropy_coding_mode_flag
     // We code the entropy_coding_mode_flag, it's needed for tests.
     WRITE_FLAG( 1,                                          "entropy_coding_mode_flag" );
     WRITE_UVLC( 0,                                          "entropy_coding_synchro" );
     WRITE_FLAG( 0,                                          "cabac_istate_reset" );
-    WRITE_UVLC( 0,                                          "num_temporal_layer_switching_point_flags" );
+#if !H0566_TLA
+#error Please Sync Code
+#endif
     // num_ref_idx_l0_default_active_minus1
     // num_ref_idx_l1_default_active_minus1
     WRITE_SVLC( 0/*h->iQP - 26*/,                           "pic_init_qp_minus26");
@@ -230,7 +240,6 @@ void xWritePPS( X265_t *h )
 void xWriteSliceHeader( X265_t *h )
 {
     X265_BitStream *pBS = &h->bs;
-    int i;
 #if ENC_DEC_TRACE  
     xTraceSliceHeader();
 #endif
