@@ -40,8 +40,9 @@
 
 #define NUM_INTRA_MODE                      (36)
 #define PLANAR_IDX                          ( 0)
-#define PLANAR_IDX_ORDER                    (34)
-#define DC_IDX                              ( 3)
+#define VER_IDX                             (26)                    // index for intra VERTICAL   mode
+#define HOR_IDX                             (10)                    // index for intra HORIZONTAL mode
+#define DC_IDX                              ( 1)
 #define MAX_SAD                             ( 1 << 30 )
 
 #define ALWAYS_INLINE                       __inline
