@@ -44,6 +44,7 @@ static Int32 Clip3( Int32 minVal, Int32 maxVal, Int32 a )
     return a;
 }
 
+#define Clip(x)         Clip3( 0, 255, (x))
 #define xSHR(x, n)      ( (n)>=32 ? 0 : ((x)>>(n)) )
 #define xSHL(x, n)      ( (n)>=32 ? 0 : ((x)<<(n)) )
 #define MALLOC(n)       malloc(n)
