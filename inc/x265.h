@@ -79,15 +79,15 @@ typedef struct X265_Cache {
     UInt8   pucTopPixY[MAX_WIDTH    ];
     UInt8   pucTopPixU[MAX_WIDTH / 2];
     UInt8   pucTopPixV[MAX_WIDTH / 2];
-     Int8   pcTopModeY[(MAX_WIDTH + MAX_CU_SIZE)    ];
-     Int8   pcTopModeU[(MAX_WIDTH + MAX_CU_SIZE) / 2];
-     Int8   pcTopModeV[(MAX_WIDTH + MAX_CU_SIZE) / 2];
+    UInt8   pcTopModeY[(MAX_WIDTH + MAX_CU_SIZE)    ];
+    UInt8   pcTopModeU[(MAX_WIDTH + MAX_CU_SIZE) / 2];
+    UInt8   pcTopModeV[(MAX_WIDTH + MAX_CU_SIZE) / 2];
     UInt8   pucLeftPixY[MAX_CU_SIZE    ];
     UInt8   pucLeftPixU[MAX_CU_SIZE / 2];
     UInt8   pucLeftPixV[MAX_CU_SIZE / 2];
-     Int8   pcLeftModeY[(MAX_CU_SIZE + MAX_CU_SIZE)    ];
-     Int8   pcLeftModeU[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
-     Int8   pcLeftModeV[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
+    UInt8   pcLeftModeY[(MAX_CU_SIZE + MAX_CU_SIZE)    ];
+    UInt8   pcLeftModeU[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
+    UInt8   pcLeftModeV[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
     UInt8   pucTopLeftY[MAX_PART_NUM    ];
     UInt8   pucTopLeftU[MAX_PART_NUM / 4];
     UInt8   pucTopLeftV[MAX_PART_NUM / 4];
@@ -191,5 +191,25 @@ void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize, UInt bLuma );
 // ***************************************************************************
 typedef UInt32 xSad( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
 extern xSad *xSadN[MAX_CU_DEPTH+2];
+
+// ***************************************************************************
+// * TestVec.cpp
+// ***************************************************************************
+extern UInt32 tv_size;
+extern UInt8  tv_top[2][MAX_CU_SIZE*2+1];
+extern UInt8  tv_left[2][MAX_CU_SIZE*2];
+extern UInt8  tv_pred[35][MAX_CU_SIZE*MAX_CU_SIZE];
+extern UInt8  tv_orig[MAX_CU_SIZE*MAX_CU_SIZE];
+extern UInt8  tv_bpred[MAX_CU_SIZE*MAX_CU_SIZE];
+extern  Int16 tv_resi[MAX_CU_SIZE*MAX_CU_SIZE];
+extern  Int16 tv_trans[MAX_CU_SIZE*MAX_CU_SIZE];
+extern  Int16 tv_quant[MAX_CU_SIZE*MAX_CU_SIZE];
+extern  Int16 tv_iquant[MAX_CU_SIZE*MAX_CU_SIZE];
+extern  Int16 tv_itrans[MAX_CU_SIZE*MAX_CU_SIZE];
+extern UInt8  tv_rec[MAX_CU_SIZE*MAX_CU_SIZE];
+extern UInt32 tv_uiPreds[3];
+extern UInt32 tv_bestmode;
+int tInitTv( const char *fname );
+void tGetVector( );
 
 #endif /* __X265_H__ */

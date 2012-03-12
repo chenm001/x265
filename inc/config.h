@@ -29,6 +29,8 @@
 // x265 start
 ////////////////////////////
 #define ENC_DEC_TRACE                       (0)
+#define CHECK_TV                            (1)
+
 #define MAX_CU_DEPTH                        (4)
 #define MAX_REF_NUM                         (1)
 #define MAX_WIDTH                           (2048)
