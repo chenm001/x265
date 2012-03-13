@@ -66,8 +66,7 @@ UInt32 xSad16xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     return uiSad;
 }
 
-xSad *xSadN[MAX_CU_DEPTH+2] = {
-    NULL,       /*  2 x N */
+xSad *xSadN[MAX_CU_DEPTH+1] = {
     NULL,       /*  4 x N */
     NULL,       /*  8 x N */
     xSad16xN,   /* 16 x N */

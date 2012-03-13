@@ -191,7 +191,7 @@ void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize, UInt bLuma );
 // * Pixel.cpp
 // ***************************************************************************
 typedef UInt32 xSad( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
-extern xSad *xSadN[MAX_CU_DEPTH+2];
+extern xSad *xSadN[MAX_CU_DEPTH+1];
 
 // ***************************************************************************
 // * TestVec.cpp
