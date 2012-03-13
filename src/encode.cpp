@@ -99,9 +99,10 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             // Stage 0: Init internal
             h->uiCUX = x;
 
-#if (CHECK_TV)
+            #if (CHECK_TV)
             tGetVector();
-#endif
+            #endif
+
             // Stage 1a: Load image to cache
             xEncCacheLoadCU( h, x, y );
 
@@ -116,11 +117,14 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             nBestMode = 0;
             for( nMode=0; nMode<35; nMode++ ) {
                 UInt32 uiSad;
-#if (CHECK_TV)
+
+                #if (CHECK_TV)
                 memset( pCache->pucPredY, 0xCD, sizeof(pCache->pucPredY) );
-#endif
+                #endif
+
                 xEncIntraPredLuma( h, nMode, nCUSize, TRUE );
-#if (CHECK_TV)
+
+                #if (CHECK_TV)
                 {
                     int x, y;
                     for( y=0; y<nCUSize; y++ ) {
@@ -134,7 +138,8 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                     }
 _exit:;
                 }
-#endif
+                #endif
+
                 if ( nMode == pucMostMode[0] )
                     uiSad = 1 * lambda;
                 else if ( nMode == pucMostMode[1] || nMode == pucMostMode[2] )
@@ -152,21 +157,22 @@ _exit:;
                     uiBestSad = uiSad;
                     nBestMode = nMode;
                 }
-#if (CHECK_TV)
+
+                #if (CHECK_TV)
                 if ( uiSad != tv_sad[nMode] ) {
                     printf( " Sad %d -> %d Failed!\n", tv_sad[nMode], uiSad );
                     abort();
                 }
-#endif
+                #endif
             }
-#if (CHECK_TV)
+            #if (CHECK_TV)
             if ( nBestMode != tv_bestmode ) {
                 printf( " BestMode %d -> %d Failed!\n", tv_bestmode, nBestMode );
                 abort();
             }
 
             printf( "CU(%2d,%2d) Passed!\n", y/h->ucMaxCUWidth, x/h->ucMaxCUWidth );
-#endif
+            #endif
         }
     }
 
