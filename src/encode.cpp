@@ -105,6 +105,19 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 
             // Stage 1a: Load image to cache
             xEncCacheLoadCU( h, x, y );
+            #if (CHECK_TV)
+            {
+                int x, y;
+                for( y=0; y<nCUSize; y++ ) {
+                    for( x=0; x<nCUSize; x++ ) {
+                        if ( pCache->pucPixY[y * MAX_CU_SIZE + x] != tv_orig[y * MAX_CU_SIZE + x] ) {
+                            fprintf( stderr, "Orig Pixel Wrong, (%d,%d), %02X -> %02X\n", y, x, tv_orig[y * MAX_CU_SIZE + x], pCache->pucPixY[y * MAX_CU_SIZE + x] );
+                            abort();
+                        }
+                    }
+                }
+            }
+            #endif
 
             // Stage 1b: Load Intra PU Reference Samples
             // TODO: ASSUME one PU only
