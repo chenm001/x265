@@ -53,6 +53,8 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     const UInt32 uiHeight   = h->usHeight;
     X265_BitStream *pBS     = &h->bs;
     X265_Cache     *pCache  = &h->cache;
+    const Int32  lambda     = h->iQP;
+          UInt8 *pucMostMode= pCache->ucMostMode;
     Int x, y;
     Int i;
 
@@ -133,18 +135,37 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 _exit:;
                 }
 #endif
-                uiSad = xSadN[nLog2CUSize-2](
+                if ( nMode == pucMostMode[0] )
+                    uiSad = 1 * lambda;
+                else if ( nMode == pucMostMode[1] || nMode == pucMostMode[2] )
+                    uiSad = 2 * lambda;
+                else
+                    uiSad = 3 * lambda;
+                uiSad += xSadN[nLog2CUSize-2](
                             nCUSize,
                             pCache->pucPixY, MAX_CU_SIZE,
                             pCache->pucPredY, MAX_CU_SIZE
                         );
+
+
                 if ( uiSad < uiBestSad ) {
                     uiBestSad = uiSad;
                     nBestMode = nMode;
                 }
+#if (CHECK_TV)
+                if ( uiSad != tv_sad[nMode] ) {
+                    printf( " Sad %d -> %d Failed!\n", tv_sad[nMode], uiSad );
+                    abort();
+                }
+#endif
             }
 #if (CHECK_TV)
-            printf("CU(%2d,%2d) Passed!\n", y/h->ucMaxCUWidth, x/h->ucMaxCUWidth);
+            if ( nBestMode != tv_bestmode ) {
+                printf( " BestMode %d -> %d Failed!\n", tv_bestmode, nBestMode );
+                abort();
+            }
+
+            printf( "CU(%2d,%2d) Passed!\n", y/h->ucMaxCUWidth, x/h->ucMaxCUWidth );
 #endif
         }
     }
@@ -236,6 +257,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     const UInt8 *pcLeftModeY    =  pCache->pcLeftModeY + uiY;
           UInt8 *pucRefY0       =  pCache->pucPixRef[0];
           UInt8 *pucRefY1       =  pCache->pucPixRef[1];
+          UInt8 *pucMostMode    =  pCache->ucMostMode;
 
     /// T(op), B(ottom), L(eft), R(ight)
     const UInt   bT             = (pcTopModeY [uiX] != MODE_INVALID);
@@ -315,17 +337,62 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
         }
     }
 
+    // Most Mode
+    UInt8 ucLeftMode = bL ? pcLeftModeY[uiX] : DC_IDX;
+    UInt8 ucTopMode  = bT ? pcTopModeY [uiX] : DC_IDX;
+
+    if ( ucLeftMode == ucTopMode ) {
+        if ( ucLeftMode > 1 ) {
+            // angular modes
+            pucMostMode[0] = ucLeftMode;
+            pucMostMode[1] = ((ucLeftMode + 29) % 32) + 2;
+            pucMostMode[1] = ((ucLeftMode -  1) % 32) + 2;
+        }
+        else {
+            // non angular modes
+            pucMostMode[0] = PLANAR_IDX;
+            pucMostMode[1] = DC_IDX;
+            pucMostMode[2] = VER_IDX; 
+        }
+    }
+    else {
+        pucMostMode[0] = ucLeftMode;
+        pucMostMode[1] = ucTopMode;
+        if ( ucLeftMode && ucTopMode )
+            pucMostMode[2] = PLANAR_IDX;
+        else
+            pucMostMode[2] = ( ucLeftMode + ucTopMode ) < 2 ? VER_IDX : DC_IDX;
+    }
+
+
 #if (CHECK_TV)
     assert( nSize == tv_size );
 
     int bPassed = TRUE;
     for( n=0; n<2; n++ ) {
+        // Check Left
         for( i=0; i<tv_size*2; i++ ) {
             if ( pucRefY0[i] != tv_left[0][tv_size*2-i-1] ) {
                 bPassed = FALSE;
-                fprintf( stderr, "Detect Intra Reference [%d] Wrong at %d, %02X -> %02X\n", n, i, tv_left[n][tv_size*2-i-1], pCache->pucPixRef[n][i] );
+                fprintf( stderr, "Detect Intra Reference Left[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_left[n][tv_size*2-i-1], pCache->pucPixRef[n][i] );
                 break;
             }
+        }
+        // Check TopLeft, Top and TopRight
+        for( i=0; i<tv_size*2+1; i++ ) {
+            if ( pucRefY0[tv_size*2+i] != tv_top[0][i] ) {
+                bPassed = FALSE;
+                fprintf( stderr, "Detect Intra Reference  Top[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_top[n][i], pCache->pucPixRef[n][tv_size*2+i] );
+                break;
+            }
+        }
+    }
+    // Check MPM3
+    for( i=0; i<3; i++ ) {
+        if ( pucMostMode[i] != tv_mostmode[i] ) {
+            bPassed = FALSE;
+            fprintf( stderr, "Detect Intra Most Mode[%d] Wrong %d -> %d\n", i, tv_mostmode[i], pCache->pucPixRef[n][i] );
+            break;
         }
     }
     if ( bPassed ) {

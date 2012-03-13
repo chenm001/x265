@@ -100,6 +100,7 @@ typedef struct X265_Cache {
     /// IntraPred buffer
     UInt8   pucPixRef[2][4*MAX_CU_SIZE+1];          //< 0:ReconPixel, 1:Filtered
     UInt8   pucPredY[MAX_CU_SIZE * MAX_CU_SIZE];
+    UInt8   ucMostMode[3];
     UInt8   bValid[5];
 } X265_Cache;
 
@@ -207,8 +208,9 @@ extern  Int16 tv_quant[MAX_CU_SIZE*MAX_CU_SIZE];
 extern  Int16 tv_iquant[MAX_CU_SIZE*MAX_CU_SIZE];
 extern  Int16 tv_itrans[MAX_CU_SIZE*MAX_CU_SIZE];
 extern UInt8  tv_rec[MAX_CU_SIZE*MAX_CU_SIZE];
-extern UInt32 tv_uiPreds[3];
+extern UInt32 tv_mostmode[3];
 extern UInt32 tv_bestmode;
+extern UInt32 tv_sad[35];
 int tInitTv( const char *fname );
 void tGetVector( );
 

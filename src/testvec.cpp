@@ -38,8 +38,9 @@ Int16 tv_quant[MAX_CU_SIZE*MAX_CU_SIZE];
 Int16 tv_iquant[MAX_CU_SIZE*MAX_CU_SIZE];
 Int16 tv_itrans[MAX_CU_SIZE*MAX_CU_SIZE];
 UInt8  tv_rec[MAX_CU_SIZE*MAX_CU_SIZE];
-UInt32 tv_uiPreds[3];
+UInt32 tv_mostmode[3];
 UInt32 tv_bestmode;
+UInt32 tv_sad[35];
 static FILE *fp_tv = NULL;
 
 int tInitTv( const char *fname )
@@ -120,7 +121,7 @@ void tGetVector( )
     memset( tv_iquant,  0xCD, sizeof(tv_iquant) );
     memset( tv_itrans,  0xCD, sizeof(tv_itrans) );
     memset( tv_rec,     0xCD, sizeof(tv_rec)    );
-    memset( tv_uiPreds, 0xCD, sizeof(tv_uiPreds));
+    memset( tv_mostmode,0xCD, sizeof(tv_mostmode));
     tv_bestmode = MODE_INVALID;
 
     char buf[1024];
@@ -137,7 +138,7 @@ void tGetVector( )
             &dummy0, &dummy1,
             &tv_size,
             &dummy0, &dummy1,
-            &tv_uiPreds[0], &tv_uiPreds[1], &tv_uiPreds[2]
+            &tv_mostmode[0], &tv_mostmode[1], &tv_mostmode[2]
     );
     assert( (tv_size >= 4) && (tv_size <= 64) );
 
@@ -173,6 +174,7 @@ void tGetVector( )
         sscanf( buf, "*** Mode=%2d, bFilter=%d, Sad=%6d", &dummy0, &dummy1, &dummy2 );
         assert( dummy0 == i );
 
+        tv_sad[i] = dummy2;
         for( j=0; j<tv_size; j++ ) {
             fgets( buf, sizeof(buf), fp_tv );
             tReadLine8( buf, &tv_pred[i][j * MAX_CU_SIZE], tv_size );
