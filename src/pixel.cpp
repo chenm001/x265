@@ -85,7 +85,7 @@ xSad *xSadN[MAX_CU_DEPTH+1] = {
  *  \param nLines transform lines
  *  \param nShift specifies right shift after 1D transform
  */
-void xDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xDCT4( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
@@ -104,7 +104,7 @@ void xDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
-void xDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
+void xDST4( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
@@ -124,7 +124,7 @@ void xDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
     }
 }
 
-void xDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xDCT8( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
@@ -158,12 +158,12 @@ void xDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
-void xDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xDCT16( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
 
-    for( i=0; i<16; i++ ) {
+    for( i=0; i<nLines; i++ ) {
         /* Even and Odd */
         Int32 E0 = pSrc[i*MAX_CU_SIZE+0] + pSrc[i*MAX_CU_SIZE+15];
         Int32 O0 = pSrc[i*MAX_CU_SIZE+0] - pSrc[i*MAX_CU_SIZE+15];
@@ -227,7 +227,7 @@ void xDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
-void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xDCT32( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i,k;
     Int32 E[16],O[16];
@@ -236,7 +236,7 @@ void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     Int32 EEEE[2],EEEO[2];
     int rnd = 1<<(nShift-1);
 
-    for( i=0; i<32; i++ ) {
+    for( i=0; i<nLines; i++ ) {
         /* E and O */
         for( k=0; k<16; k++ ) {
             E[k] = pSrc[i*MAX_CU_SIZE+k] + pSrc[i*MAX_CU_SIZE+31-k];
@@ -259,31 +259,32 @@ void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
         EEEO[1] = EEE[1] - EEE[2];
 
         // 0, 8, 16, 24
-        pDst[ 0*MAX_CU_SIZE+i] = (g_aiT32[ 0*16+0]*EEEE[0] + g_aiT32[ 0*16+1]*EEEE[1] + rnd) >> nShift;
-        pDst[16*MAX_CU_SIZE+i] = (g_aiT32[16*16+0]*EEEE[0] + g_aiT32[16*16+1]*EEEE[1] + rnd) >> nShift;
-        pDst[ 8*MAX_CU_SIZE+i] = (g_aiT32[ 8*16+0]*EEEO[0] + g_aiT32[ 8*16+1]*EEEO[1] + rnd) >> nShift;
-        pDst[24*MAX_CU_SIZE+i] = (g_aiT32[24*16+0]*EEEO[0] + g_aiT32[24*16+1]*EEEO[1] + rnd) >> nShift;
+        pDst[ 0*MAX_CU_SIZE+i] = (g_aiT32[ 0*32+0]*EEEE[0] + g_aiT32[ 0*32+1]*EEEE[1] + rnd) >> nShift;
+        pDst[16*MAX_CU_SIZE+i] = (g_aiT32[16*32+0]*EEEE[0] + g_aiT32[16*32+1]*EEEE[1] + rnd) >> nShift;
+        pDst[ 8*MAX_CU_SIZE+i] = (g_aiT32[ 8*32+0]*EEEO[0] + g_aiT32[ 8*32+1]*EEEO[1] + rnd) >> nShift;
+        pDst[24*MAX_CU_SIZE+i] = (g_aiT32[24*32+0]*EEEO[0] + g_aiT32[24*32+1]*EEEO[1] + rnd) >> nShift;
 
         // 4, 12, 20, 28
         for( k=4; k<32; k+=8 ) {
-            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*16+0]*EEO[0] + g_aiT32[k*16+1]*EEO[1] + g_aiT32[k*16+2]*EEO[2] + g_aiT32[k*16+3]*EEO[3] + rnd) >> nShift;
+            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*32+0]*EEO[0] + g_aiT32[k*32+1]*EEO[1] + g_aiT32[k*32+2]*EEO[2] + g_aiT32[k*32+3]*EEO[3] + rnd) >> nShift;
         }
 
         // 2, 6, 10, 14, 18, 22, 26, 30
         for( k=2; k<32; k+=4 ) {
-            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*16+0]*EO[0] + g_aiT32[k*16+1]*EO[1] + g_aiT32[k*16+2]*EO[2] + g_aiT32[k*16+3]*EO[3] +
-                                     g_aiT32[k*16+4]*EO[4] + g_aiT32[k*16+5]*EO[5] + g_aiT32[k*16+6]*EO[6] + g_aiT32[k*16+7]*EO[7] + rnd) >> nShift;
+            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*32+0]*EO[0] + g_aiT32[k*32+1]*EO[1] + g_aiT32[k*32+2]*EO[2] + g_aiT32[k*32+3]*EO[3] +
+                                     g_aiT32[k*32+4]*EO[4] + g_aiT32[k*32+5]*EO[5] + g_aiT32[k*32+6]*EO[6] + g_aiT32[k*32+7]*EO[7] + rnd) >> nShift;
         }
 
         // 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
         for( k=1; k<32; k+=2 ) {
-            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*16+ 0]*O[ 0] + g_aiT32[k*16+ 1]*O[ 1] + g_aiT32[k*16+ 2]*O[ 2] + g_aiT32[k*16+ 3]*O[ 3] +
-                                     g_aiT32[k*16+ 4]*O[ 4] + g_aiT32[k*16+ 5]*O[ 5] + g_aiT32[k*16+ 6]*O[ 6] + g_aiT32[k*16+ 7]*O[ 7] +
-                                     g_aiT32[k*16+ 8]*O[ 8] + g_aiT32[k*16+ 9]*O[ 9] + g_aiT32[k*16+10]*O[10] + g_aiT32[k*16+11]*O[11] +
-                                     g_aiT32[k*16+12]*O[12] + g_aiT32[k*16+13]*O[13] + g_aiT32[k*16+14]*O[14] + g_aiT32[k*16+15]*O[15] + rnd) >> nShift;
+            pDst[k*MAX_CU_SIZE+i] = (g_aiT32[k*32+ 0]*O[ 0] + g_aiT32[k*32+ 1]*O[ 1] + g_aiT32[k*32+ 2]*O[ 2] + g_aiT32[k*32+ 3]*O[ 3] +
+                                     g_aiT32[k*32+ 4]*O[ 4] + g_aiT32[k*32+ 5]*O[ 5] + g_aiT32[k*32+ 6]*O[ 6] + g_aiT32[k*32+ 7]*O[ 7] +
+                                     g_aiT32[k*32+ 8]*O[ 8] + g_aiT32[k*32+ 9]*O[ 9] + g_aiT32[k*32+10]*O[10] + g_aiT32[k*32+11]*O[11] +
+                                     g_aiT32[k*32+12]*O[12] + g_aiT32[k*32+13]*O[13] + g_aiT32[k*32+14]*O[14] + g_aiT32[k*32+15]*O[15] + rnd) >> nShift;
         }
     }
 }
+
 
 /** 4x4 inverse transform implemented using partial butterfly structure (1D)
  *  \param pSrc   input data (residual)
@@ -291,7 +292,7 @@ void xDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
  *  \param nLines transform lines
  *  \param nShift specifies right shift after 1D transform
  */
-void xInvDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xInvDCT4( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
@@ -316,7 +317,7 @@ void xInvDCT4( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
-void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
+void xInvDST4( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1 << (nShift-1);
@@ -341,7 +342,7 @@ void xInvDST4( Int16 *pSrc, Int16 *pDst, Int nShift )
   }
 }
 
-void xInvDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xInvDCT8( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
@@ -383,7 +384,7 @@ void xInvDCT8( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
-void xInvDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xInvDCT16( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i;
     int rnd = 1<<(nShift-1);
@@ -474,7 +475,7 @@ void xInvDCT16( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
  *  \param nLines transform lines
  *  \param nShift specifies right shift after 1D transform
  */
-void xInvDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
+void xInvDCT32( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift )
 {
     int i,k;
     Int32 E[16],O[16];
@@ -541,7 +542,27 @@ void xInvDCT32( Int16 *pSrc, Int16 *pDst, Int nLines, Int nShift )
     }
 }
 
-UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
+xDCT *xDctN[MAX_CU_DEPTH+1] = {
+    xDST4,
+    xDCT4,
+    xDCT8,
+    xDCT16,
+    xDCT32
+};
+
+xDCT *xInvDctN[MAX_CU_DEPTH+1] = {
+    xInvDST4,
+    xInvDCT4,
+    xInvDCT8,
+    xInvDCT16,
+    xInvDCT32
+};
+
+
+// ***************************************************************************
+// * Interface Functions
+// ***************************************************************************
+UInt32 xQuant( Int16 *pDst, Int16 *pSrc, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
 {
     int x, y;
     UInt32 uiAcSum = 0;
@@ -569,10 +590,20 @@ UInt32 xQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
             pDst[nBlockPos] = Clip3(-32768, 32767, pDst[nBlockPos]);
         }
     }
+    #if (CHECK_TV)
+    for( y=0; y<iHeight; y++ ) {
+        for( x=0; x<iWidth; x++ ) {
+            if (pDst[y * MAX_CU_SIZE + x] != tv_quant[y * MAX_CU_SIZE + x] ) {
+                printf( " Quant(%d,%d) %04X -> %04X Failed!\n", y, x, tv_quant[y * MAX_CU_SIZE + x] & 0xFFFF, pDst[y * MAX_CU_SIZE + x] & 0xFFFF );
+                abort();
+            }
+        }
+    }
+    #endif
     return uiAcSum;
 }
 
-void xDeQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
+void xDeQuant( Int16 *pDst, Int16 *pSrc, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType )
 {
     int x, y;
     const UInt nQpDiv6 = nQP / 6;
@@ -590,4 +621,109 @@ void xDeQuant( Int16 *pSrc, Int16 *pDst, Int nQP, Int iWidth, Int iHeight, X265_
             pDst[nBlockPos] = Clip3(-32768, 32767, iCoeffQ);
         }
     }
+    #if (CHECK_TV)
+    for( y=0; y<iHeight; y++ ) {
+        for( x=0; x<iWidth; x++ ) {
+            if (pDst[y * MAX_CU_SIZE + x] != tv_iquant[y * MAX_CU_SIZE + x] ) {
+                printf( " DeQuant(%d,%d) %04X -> %04X Failed!\n", y, x, tv_iquant[y * MAX_CU_SIZE + x] & 0xFFFF, pDst[y * MAX_CU_SIZE + x] & 0xFFFF );
+                abort();
+            }
+        }
+    }
+    #endif
+}
+
+void xSubDct(
+    Int16 *pDst,
+    UInt8 *pSrc,
+    UInt8 *pRef,
+    Int16 *piTmp0, Int16 *piTmp1,
+    Int iWidth, Int iHeight, UInt nMode
+)
+{
+    const Int nLog2Width  = xLog2( iWidth - 1 );
+    const Int nLog2Height = xLog2( iHeight - 1 );
+    const Int bUseDst     = (iWidth + iHeight == 8) && (nMode != MODE_INVALID);
+    const Int bUseDstHor  = bUseDst && (!nMode || (nMode>=2  && nMode <= 25));
+    const Int bUseDstVer  = bUseDst && (!nMode || (nMode>=11 && nMode <= 34));
+    int i, j;
+
+    // Sub
+    for( i=0; i<iHeight; i++ ) {
+        for( j=0; j<iWidth; j++ ) {
+            piTmp0[i * MAX_CU_SIZE + j] = pSrc[i * MAX_CU_SIZE + j] - pRef[i * MAX_CU_SIZE + j];
+        }
+    }
+    #if (CHECK_TV)
+    for( i=0; i<iHeight; i++ ) {
+        for( j=0; j<iWidth; j++ ) {
+            if (piTmp0[i * MAX_CU_SIZE + j] != tv_resi[i * MAX_CU_SIZE + j] ) {
+                printf( " Residual(%d,%d) %04X -> %04X Failed!\n", i, j, tv_resi[i * MAX_CU_SIZE + j] & 0xFFFF, piTmp0[i * MAX_CU_SIZE + j] & 0xFFFF );
+                abort();
+            }
+        }
+    }
+    #endif
+
+    xDctN[nLog2Width  - 1 - bUseDstHor]( piTmp1, piTmp0, iHeight, nLog2Width -1 );
+    xDctN[nLog2Height - 1 - bUseDstVer]( pDst,   piTmp1, iWidth,  nLog2Height+6 );
+
+    #if (CHECK_TV)
+    for( i=0; i<iHeight; i++ ) {
+        for( j=0; j<iWidth; j++ ) {
+            if (pDst[i * MAX_CU_SIZE + j] != tv_trans[i * MAX_CU_SIZE + j] ) {
+                printf( " Transform(%d,%d) %04X -> %04X Failed!\n", i, j, tv_trans[i * MAX_CU_SIZE + j] & 0xFFFF, pDst[i * MAX_CU_SIZE + j] & 0xFFFF );
+                abort();
+            }
+        }
+    }
+    #endif
+}
+
+void xIDctAdd(
+    UInt8 *pDst,
+    Int16 *pSrc,
+    UInt8 *pRef,
+    Int16 *piTmp0, Int16 *piTmp1,
+    Int iWidth, Int iHeight, UInt nMode
+)
+{
+    const Int nLog2Width  = xLog2( iWidth - 1 );
+    const Int nLog2Height = xLog2( iHeight - 1 );
+    const Int bUseDst     = (iWidth + iHeight == 8) && (nMode != MODE_INVALID);
+    const Int bUseDstHor  = bUseDst && (!nMode || (nMode>=2  && nMode <= 25));
+    const Int bUseDstVer  = bUseDst && (!nMode || (nMode>=11 && nMode <= 34));
+    int i, j;
+
+    xInvDctN[nLog2Width  - 1 - bUseDstHor]( piTmp0, pSrc, iHeight,  SHIFT_INV_1ST );
+    xInvDctN[nLog2Height - 1 - bUseDstVer]( piTmp1, piTmp0, iWidth, SHIFT_INV_2ND );
+
+    #if (CHECK_TV)
+    for( i=0; i<iHeight; i++ ) {
+        for( j=0; j<iWidth; j++ ) {
+            if (piTmp1[i * MAX_CU_SIZE + j] != tv_itrans[i * MAX_CU_SIZE + j] ) {
+                printf( " ITransform(%d,%d) %04X -> %04X Failed!\n", i, j, tv_itrans[i * MAX_CU_SIZE + j] & 0xFFFF, piTmp1[i * MAX_CU_SIZE + j] & 0xFFFF );
+                abort();
+            }
+        }
+    }
+    #endif
+
+    // Add
+    for( i=0; i<iHeight; i++ ) {
+        for( j=0; j<iWidth; j++ ) {
+            pDst[i * MAX_CU_SIZE + j] = Clip( piTmp1[i * MAX_CU_SIZE + j] + pRef[i * MAX_CU_SIZE + j] );
+        }
+    }
+
+    #if (CHECK_TV)
+    for( i=0; i<iHeight; i++ ) {
+        for( j=0; j<iWidth; j++ ) {
+            if (pDst[i * MAX_CU_SIZE + j] != tv_rec[i * MAX_CU_SIZE + j] ) {
+                printf( " Reconst(%d,%d) %04X -> %04X Failed!\n", i, j, tv_rec[i * MAX_CU_SIZE + j] & 0xFFFF, pDst[i * MAX_CU_SIZE + j] & 0xFFFF );
+                abort();
+            }
+        }
+    }
+    #endif
 }

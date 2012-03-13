@@ -42,9 +42,11 @@
 
 #define NUM_INTRA_MODE                      (36)
 #define PLANAR_IDX                          ( 0)
-#define VER_IDX                             (26)                    // index for intra VERTICAL   mode
-#define HOR_IDX                             (10)                    // index for intra HORIZONTAL mode
+#define VER_IDX                             (26)    // index for intra VERTICAL   mode
+#define HOR_IDX                             (10)    // index for intra HORIZONTAL mode
 #define DC_IDX                              ( 1)
+#define SHIFT_INV_1ST                       ( 7)    // Shift after first inverse transform stage
+#define SHIFT_INV_2ND                       (12)    // Shift after second inverse transform stage
 #define MAX_SAD                             ( 1 << 30 )
 
 #define ALWAYS_INLINE                       __inline

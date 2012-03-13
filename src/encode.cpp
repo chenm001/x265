@@ -49,14 +49,22 @@ void xEncInit( X265_t *h )
 
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize )
 {
-    const UInt32 uiWidth    = h->usWidth;
-    const UInt32 uiHeight   = h->usHeight;
-    X265_BitStream *pBS     = &h->bs;
-    X265_Cache     *pCache  = &h->cache;
-    const Int32  lambda     = h->iQP;
-          UInt8 *pucMostMode= pCache->ucMostMode;
+    const UInt32    uiWidth     = h->usWidth;
+    const UInt32    uiHeight    = h->usHeight;
+    X265_BitStream *pBS         = &h->bs;
+    X265_Cache     *pCache      = &h->cache;
+          Int       nQP         = h->iQP;
+    const Int32     lambda      = nQP;
+          UInt8    *pucMostMode = pCache->ucMostMode;
+          UInt8    *pucPixY     = pCache->pucPixY;
+          UInt8    *pucRecY     = pCache->pucRecY;
+          UInt8    *pucPredY    = pCache->pucPredY;
+          Int16    *piTmp0      = pCache->piTmp[0];
+          Int16    *piTmp1      = pCache->piTmp[1];
+          Int16    *piCoef      = pCache->piCoef;
     Int x, y;
     Int i;
+    UInt32 uiSum;
 
     /// Copy to local
     h->pFrame = pFrame;
@@ -89,7 +97,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     for( y=0; y < uiHeight; y+=h->ucMaxCUWidth ) {
         h->uiCUY = y;
         xEncCahceInitLine( h );
-        for( x=0; x < uiHeight; x+=h->ucMaxCUWidth ) {
+        for( x=0; x < uiWidth; x+=h->ucMaxCUWidth ) {
             const UInt   nCUSize     = h->ucMaxCUWidth;
             const UInt   nLog2CUSize = xLog2(nCUSize-1);
             UInt32 uiBestSad;
@@ -132,7 +140,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                 UInt32 uiSad;
 
                 #if (CHECK_TV)
-                memset( pCache->pucPredY, 0xCD, sizeof(pCache->pucPredY) );
+                memset( pucPredY, 0xCD, sizeof(pCache->pucPredY) );
                 #endif
 
                 xEncIntraPredLuma( h, nMode, nCUSize, TRUE );
@@ -142,7 +150,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                     int x, y;
                     for( y=0; y<nCUSize; y++ ) {
                         for( x=0; x<nCUSize; x++ ) {
-                            if ( pCache->pucPredY[y * MAX_CU_SIZE + x] != tv_pred[nMode][y * MAX_CU_SIZE + x] ) {
+                            if ( pucPredY[y * MAX_CU_SIZE + x] != tv_pred[nMode][y * MAX_CU_SIZE + x] ) {
                                 fprintf( stderr, "Intra Pred Wrong, Mode %d at (%d,%d), %02X -> %02X\n", nMode, y, x, tv_pred[nMode][y*nCUSize+x], pCache->pucPredY[y * MAX_CU_SIZE + x] );
                                 //abort();
                                 goto _exit;
@@ -161,10 +169,9 @@ _exit:;
                     uiSad = 3 * lambda;
                 uiSad += xSadN[nLog2CUSize-2](
                             nCUSize,
-                            pCache->pucPixY, MAX_CU_SIZE,
-                            pCache->pucPredY, MAX_CU_SIZE
+                            pucPixY, MAX_CU_SIZE,
+                            pucPredY, MAX_CU_SIZE
                         );
-
 
                 if ( uiSad < uiBestSad ) {
                     uiBestSad = uiSad;
@@ -183,6 +190,38 @@ _exit:;
                 printf( " BestMode %d -> %d Failed!\n", tv_bestmode, nBestMode );
                 abort();
             }
+
+            // Stage 3a: Encode CU
+            pCache->nBestMode = nBestMode;
+            xEncIntraPredLuma( h, nBestMode, nCUSize, TRUE );
+            xSubDct( piTmp0,
+                     pucPixY,
+                     pucPredY,
+                     piTmp0, piTmp1,
+                     nCUSize, nCUSize, nBestMode );
+            uiSum = xQuant( piCoef, piTmp0, nQP, nCUSize, nCUSize, SLICE_I );
+
+            // Stage 3b: Decode CU
+            if ( uiSum ) {
+                xDeQuant( piTmp0, piCoef, nQP, nCUSize, nCUSize, SLICE_I );
+                xIDctAdd( pucRecY,
+                          piTmp0,
+                          pucPredY,
+                          piTmp1, piTmp0,
+                          nCUSize, nCUSize, nBestMode );
+            }
+            else {
+                for( i=0; i<nCUSize; i++ ) {
+                    memcpy( &pucRecY[i*MAX_CU_SIZE], &pucPredY[i*MAX_CU_SIZE], nCUSize );
+                }
+            }
+
+            // Stage 4: Write CU
+            // TBD
+
+            // Stage 5: Update context
+            xEncCacheUpdate( h, 0, 0, nCUSize, nCUSize );
+            pCache->uiOffset += nCUSize;
 
             printf( "CU(%2d,%2d) Passed!\n", y/h->ucMaxCUWidth, x/h->ucMaxCUWidth );
             #endif
@@ -203,21 +242,18 @@ void xEncCahceInit( X265_t *h )
 {
     X265_Cache *pCache  = &h->cache;
     memset( pCache, 0, sizeof(X265_Cache) );
-    memset( pCache->pcTopModeY, MODE_INVALID, sizeof(pCache->pcTopModeY) );
-    memset( pCache->pcTopModeU, MODE_INVALID, sizeof(pCache->pcTopModeU) );
-    memset( pCache->pcTopModeV, MODE_INVALID, sizeof(pCache->pcTopModeV) );
-    memset( pCache->pucTopLeftY, MODE_INVALID, sizeof(pCache->pucTopLeftY) );
-    memset( pCache->pucTopLeftU, MODE_INVALID, sizeof(pCache->pucTopLeftU) );
-    memset( pCache->pucTopLeftV, MODE_INVALID, sizeof(pCache->pucTopLeftV) );
+    memset( pCache->pucTopModeY, MODE_INVALID, sizeof(pCache->pucTopModeY) );
+    memset( pCache->pucTopModeU, MODE_INVALID, sizeof(pCache->pucTopModeU) );
+    memset( pCache->pucTopModeV, MODE_INVALID, sizeof(pCache->pucTopModeV) );
 }
 
 void xEncCahceInitLine( X265_t *h )
 {
     X265_Cache *pCache  = &h->cache;
     pCache->uiOffset    = 0;
-    memset( pCache->pcLeftModeY, MODE_INVALID, sizeof(pCache->pcLeftModeY) );
-    memset( pCache->pcLeftModeU, MODE_INVALID, sizeof(pCache->pcLeftModeU) );
-    memset( pCache->pcLeftModeV, MODE_INVALID, sizeof(pCache->pcLeftModeV) );
+    memset( pCache->pucLeftModeY, MODE_INVALID, sizeof(pCache->pucLeftModeY) );
+    memset( pCache->pucLeftModeU, MODE_INVALID, sizeof(pCache->pucLeftModeU) );
+    memset( pCache->pucLeftModeV, MODE_INVALID, sizeof(pCache->pucLeftModeV) );
 }
 
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
@@ -249,13 +285,45 @@ void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
     }
 }
 
+void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeight )
+{
+    X265_Cache  *pCache         = &h->cache;
+    const UInt32 uiOffset       =  pCache->uiOffset;
+          UInt8 *pucTopPixY     = &pCache->pucTopPixY[uiOffset + uiX];
+          UInt8 *pucLeftPixY    =  pCache->pucLeftPixY + uiY;
+          UInt8 *pucTopLeftY    =  pCache->pucTopLeftY;
+          UInt8 *pucTopModeY    = &pCache->pucTopModeY[(uiOffset + uiX) / MIN_CU_SIZE];
+          UInt8 *pucLeftModeY   =  pCache->pucLeftModeY + (uiY / MIN_CU_SIZE);
+    const UInt8 *pucRecY        =  pCache->pucRecY;
+    const UInt8 nBestMode       =  pCache->nBestMode;
+
+    Int x, y;
+
+    // Update TopLeft
+    for( x=0; x<nWidth; x+=MIN_CU_SIZE ) {
+        pucTopLeftY[x/MIN_CU_SIZE] = pucTopPixY[x + MIN_CU_SIZE - 1];
+    }
+
+    // Update Top
+    for( x=0; x<nWidth; x++ ) {
+        pucTopPixY [x            ] = pucRecY[(nHeight-1) * MAX_CU_SIZE + x];
+        pucTopModeY[x/MIN_CU_SIZE] = nBestMode;
+    }
+
+    // Update Left
+    for( x=0; x<nHeight; x++ ) {
+        pucLeftPixY [x            ] = pucRecY[x * MAX_CU_SIZE + (nWidth - 1)];
+        pucLeftModeY[x/MIN_CU_SIZE] = nBestMode;
+    }
+}
+
 // ***************************************************************************
 // * IntraPred Functions
 // ***************************************************************************
 UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY )
 {
-    UInt nOffsetX = (uiX % MAX_CU_SIZE) / MIN_CU_SIZE;
-    UInt nOffsetY = (uiY % MAX_CU_SIZE) / MIN_CU_SIZE;
+    UInt nOffsetX = uiX / MIN_CU_SIZE;
+    UInt nOffsetY = uiY / MIN_CU_SIZE;
     UInt nIdx     = nOffsetY * MAX_PU_XY + nOffsetX;
 
     if ( nOffsetX == 0 )
@@ -272,20 +340,20 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     const UInt8 *pucTopPixY     = &pCache->pucTopPixY[uiOffset + uiX];
     const UInt8 *pucLeftPixY    =  pCache->pucLeftPixY + uiY;
     const UInt8 *pucTopLeftY    =  pCache->pucTopLeftY;
-    const UInt8 *pcTopModeY     = &pCache->pcTopModeY[uiOffset + uiX];
-    const UInt8 *pcLeftModeY    =  pCache->pcLeftModeY + uiY;
+    const UInt8 *pucTopModeY    = &pCache->pucTopModeY[(uiOffset + uiX) / MIN_CU_SIZE];
+    const UInt8 *pucLeftModeY   =  pCache->pucLeftModeY + (uiY / MIN_CU_SIZE);
           UInt8 *pucRefY0       =  pCache->pucPixRef[0];
           UInt8 *pucRefY1       =  pCache->pucPixRef[1];
           UInt8 *pucMostMode    =  pCache->ucMostMode;
 
     /// T(op), B(ottom), L(eft), R(ight)
-    const UInt   bT             = (pcTopModeY [uiX] != MODE_INVALID);
-    const UInt   bL             = (pcLeftModeY[uiY] != MODE_INVALID);
+    const UInt   bT             = (pucTopModeY [uiX] != MODE_INVALID);
+    const UInt   bL             = (pucLeftModeY[uiY] != MODE_INVALID);
     const UInt   bLT            = bT && bL;
-    const UInt   bTR            = (pcTopModeY [uiX + nSize] != MODE_INVALID);
-    const UInt   bLB            = (pcLeftModeY[uiY + nSize] != MODE_INVALID);
+    const UInt   bTR            = (pucTopModeY [(uiX + nSize) / MIN_CU_SIZE] != MODE_INVALID);
+    const UInt   bLB            = (pucLeftModeY[(uiY + nSize) / MIN_CU_SIZE] != MODE_INVALID);
     const UInt8  bValid[5]      = {bLB, bL, bLT, bT, bTR};
-    const UInt   nBlkOffset[5]  = {0, nSize, 2*nSize, 2*nSize+1, 3*nSize+1};
+    const UInt   nBlkOffset[6]  = {0, nSize, 2*nSize, 2*nSize+1, 3*nSize+1, 4*nSize+1};
     UInt8  ucPadding;
     Int i, n;
 
@@ -307,13 +375,14 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 pucRefY0[i + nBlkOffset[0]] = pucLeftPixY[nSize * 2 - 1 - i];
             }
         }
-        if (bLB) {
+        if (bL) {
             for( i=0; i<nSize; i++ ) {
                 pucRefY0[i + nBlkOffset[1]] = pucLeftPixY[nSize - 1 - i];
             }
         }
         if (bLT) {
-            pucRefY0[nBlkOffset[2]] = pucTopLeftY[xGetTopLeftIndex(uiX, uiY)];
+            UInt offset = ((uiX == 0 ? nSize : uiX) / MIN_CU_SIZE) - 1;
+            pucRefY0[nBlkOffset[2]] = pucTopLeftY[ offset ];
         }
         if (bT) {
             for( i=0; i<nSize; i++ ) {
@@ -332,7 +401,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 break;
         }
         ucPadding = pucRefY0[nBlkOffset[n]];
-        for( i=0; i<n*nSize; i++ ) {
+        for( i=0; i<nBlkOffset[n]; i++ ) {
             pucRefY0[i] = ucPadding;
         }
 
@@ -340,10 +409,11 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
         for( ; n<ASIZE(bValid); n++ ) {
             if (!bValid[n]) {
                 assert( n > 0 );
-                const UInt nBlkLast = nBlkOffset[n-1] + ((n-1) == 2 ? 1 : nSize) - 1;
-                ucPadding = pucRefY0[nBlkLast];
-                for( i=0; i<nSize; i++ ) {
-                    pucRefY0[i] = ucPadding;
+                const UInt nBlkAddr = nBlkOffset[n];
+                const UInt nBlkSize = nBlkOffset[n + 1] - nBlkOffset[n];
+                ucPadding = pucRefY0[nBlkAddr - 1];
+                for( i=0; i<nBlkSize; i++ ) {
+                    pucRefY0[nBlkAddr + i] = ucPadding;
                 }
             }
         }
@@ -357,8 +427,8 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
 
     // Most Mode
-    UInt8 ucLeftMode = bL ? pcLeftModeY[uiX] : DC_IDX;
-    UInt8 ucTopMode  = bT ? pcTopModeY [uiX] : DC_IDX;
+    UInt8 ucLeftMode = bL        ? pucLeftModeY[uiX] : DC_IDX;
+    UInt8 ucTopMode  = bT && uiY ? pucTopModeY [uiX] : DC_IDX;
 
     if ( ucLeftMode == ucTopMode ) {
         if ( ucLeftMode > 1 ) {
