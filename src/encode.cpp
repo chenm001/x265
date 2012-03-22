@@ -55,7 +55,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     X265_Cache     *pCache      = &h->cache;
           Int       nQP         = h->iQP;
     const Int32     lambda      = nQP;
-          UInt8    *pucMostMode = pCache->ucMostMode;
+          UInt8    *pucMostModeY= pCache->ucMostModeY;
           UInt8    *pucPixY     = pCache->pucPixY;
           UInt8    *pucRecY     = pCache->pucRecY;
           UInt8    *pucPredY    = pCache->pucPredY;
@@ -161,9 +161,9 @@ _exit:;
                 }
                 #endif
 
-                if ( nMode == pucMostMode[0] )
+                if ( nMode == pucMostModeY[0] )
                     uiSad = 1 * lambda;
-                else if ( nMode == pucMostMode[1] || nMode == pucMostMode[2] )
+                else if ( nMode == pucMostModeY[1] || nMode == pucMostModeY[2] )
                     uiSad = 2 * lambda;
                 else
                     uiSad = 3 * lambda;
@@ -344,7 +344,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     const UInt8 *pucLeftModeY   =  pCache->pucLeftModeY + (uiY / MIN_CU_SIZE);
           UInt8 *pucRefY0       =  pCache->pucPixRef[0];
           UInt8 *pucRefY1       =  pCache->pucPixRef[1];
-          UInt8 *pucMostMode    =  pCache->ucMostMode;
+          UInt8 *pucMostModeY   =  pCache->ucMostModeY;
 
     /// T(op), B(ottom), L(eft), R(ight)
     const UInt   bT             = (pucTopModeY [uiX] != MODE_INVALID);
@@ -433,24 +433,24 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     if ( ucLeftMode == ucTopMode ) {
         if ( ucLeftMode > 1 ) {
             // angular modes
-            pucMostMode[0] = ucLeftMode;
-            pucMostMode[1] = ((ucLeftMode + 29) % 32) + 2;
-            pucMostMode[1] = ((ucLeftMode -  1) % 32) + 2;
+            pucMostModeY[0] = ucLeftMode;
+            pucMostModeY[1] = ((ucLeftMode + 29) % 32) + 2;
+            pucMostModeY[2] = ((ucLeftMode -  1) % 32) + 2;
         }
         else {
             // non angular modes
-            pucMostMode[0] = PLANAR_IDX;
-            pucMostMode[1] = DC_IDX;
-            pucMostMode[2] = VER_IDX; 
+            pucMostModeY[0] = PLANAR_IDX;
+            pucMostModeY[1] = DC_IDX;
+            pucMostModeY[2] = VER_IDX; 
         }
     }
     else {
-        pucMostMode[0] = ucLeftMode;
-        pucMostMode[1] = ucTopMode;
+        pucMostModeY[0] = ucLeftMode;
+        pucMostModeY[1] = ucTopMode;
         if ( ucLeftMode && ucTopMode )
-            pucMostMode[2] = PLANAR_IDX;
+            pucMostModeY[2] = PLANAR_IDX;
         else
-            pucMostMode[2] = ( ucLeftMode + ucTopMode ) < 2 ? VER_IDX : DC_IDX;
+            pucMostModeY[2] = ( ucLeftMode + ucTopMode ) < 2 ? VER_IDX : DC_IDX;
     }
 
 
@@ -478,7 +478,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
     // Check MPM3
     for( i=0; i<3; i++ ) {
-        if ( pucMostMode[i] != tv_mostmode[i] ) {
+        if ( pucMostModeY[i] != tv_mostmode[i] ) {
             bPassed = FALSE;
             fprintf( stderr, "Detect Intra Most Mode[%d] Wrong %d -> %d\n", i, tv_mostmode[i], pCache->pucPixRef[n][i] );
             break;
