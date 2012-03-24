@@ -80,14 +80,10 @@ typedef struct X265_Cache {
     UInt8   pucTopPixU[MAX_WIDTH / 2];
     UInt8   pucTopPixV[MAX_WIDTH / 2];
     UInt8   pucTopModeY[MAX_WIDTH / MIN_CU_SIZE   ];
-    UInt8   pucTopModeU[MAX_WIDTH / MIN_CU_SIZE / 2];
-    UInt8   pucTopModeV[MAX_WIDTH / MIN_CU_SIZE / 2];
     UInt8   pucLeftPixY[MAX_CU_SIZE    ];
     UInt8   pucLeftPixU[MAX_CU_SIZE / 2];
     UInt8   pucLeftPixV[MAX_CU_SIZE / 2];
     UInt8   pucLeftModeY[(MAX_CU_SIZE + MAX_CU_SIZE)    ];
-    UInt8   pucLeftModeU[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
-    UInt8   pucLeftModeV[(MAX_CU_SIZE + MAX_CU_SIZE) / 2];
     UInt8   pucTopLeftY[MAX_PU_XY    ];
     UInt8   pucTopLeftU[MAX_PU_XY / 4];
     UInt8   pucTopLeftV[MAX_PU_XY / 4];
@@ -99,27 +95,41 @@ typedef struct X265_Cache {
     UInt8   pucRecY[MAX_CU_SIZE * MAX_CU_SIZE    ];
     UInt8   pucRecU[MAX_CU_SIZE * MAX_CU_SIZE / 4];
     UInt8   pucRecV[MAX_CU_SIZE * MAX_CU_SIZE / 4];
-    UInt8   nBestMode;
+    UInt8   nBestModeY;
+    UInt8   nBestModeC;
 
     /// IntraPred buffer
     UInt8   pucPixRef[2][4*MAX_CU_SIZE+1];          //< 0:ReconPixel, 1:Filtered
+    UInt8   pucPixRefC[2][4*MAX_CU_SIZE/2+1];          //< 0:ReconPixel, 1:Filtered
     UInt8   pucPredY[MAX_CU_SIZE * MAX_CU_SIZE];
+    UInt8   pucPredC[2][MAX_CU_SIZE * MAX_CU_SIZE/4];
     UInt8   ucMostModeY[3];
-    UInt8   ucMostModeC[2][5];
+    UInt8   ucMostModeC[5];
     UInt8   bValid[5];
 
     /// Encode coeff buffer
-    Int16   piCoef[MAX_CU_SIZE*MAX_CU_SIZE];
+    Int16   piCoefY[MAX_CU_SIZE*MAX_CU_SIZE];
+    Int16   piCoefU[MAX_CU_SIZE*MAX_CU_SIZE/4];
+    Int16   piCoefV[MAX_CU_SIZE*MAX_CU_SIZE/4];
 
 
     /// Temp buffer
     Int16   piTmp[2][MAX_CU_SIZE*MAX_CU_SIZE];
 } X265_Cache;
 
+typedef struct {
+    UInt32  uiLow;
+    UInt32  uiRange;
+    Int32   iBitsLeft;
+    UInt8   ucCache;
+    UInt32  uiNumBytes;
+} X265_Cabac;
+
 /// main handle
 typedef struct X265_t {
     // Local
     X265_BitStream  bs;
+    X265_Cabac      cabac;
     X265_SliceType  eSliceType;
     X265_Frame      refn[MAX_REF_NUM];
     X265_Frame      *pFrame;
@@ -186,6 +196,8 @@ extern const Int8 g_aiT16[16*16];
 extern const Int8 g_aiT32[32*32];
 extern const Int16 g_quantScales[6];
 extern const UInt8 g_invQuantScales[6];
+extern const UInt8 g_aucChromaScale[52];
+
 
 // ***************************************************************************
 // * Encode.cpp
@@ -198,20 +210,26 @@ void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
 void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeight );
 void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize );
 UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY );
-void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize, UInt bLuma );
+void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize );
+void xEncIntraPredChroma( X265_t *h, UInt nMode, UInt nSize );
 
 // ***************************************************************************
 // * Pixel.cpp
 // ***************************************************************************
 typedef UInt32 xSad( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
 extern xSad *xSadN[MAX_CU_DEPTH+1];
-typedef void xDCT( Int16 *pDst, Int16 *pSrc, Int nLines, Int nShift );
+typedef void xDCT( Int16 *pDst, Int16 *pSrc, UInt nStride, Int nLines, Int nShift );
 extern xDCT *xDctN[MAX_CU_DEPTH+1];
 extern xDCT *xInvDctN[MAX_CU_DEPTH+1];
-void xSubDct ( Int16 *pDst, UInt8 *pSrc, UInt8 *pRef, Int16 *piTmp0, Int16 *piTmp1, Int iWidth,  Int iHeight, UInt nMode );
-void xIDctAdd( UInt8 *pDst, Int16 *pSrc, UInt8 *pRef, Int16 *piTmp0, Int16 *piTmp1, Int iWidth, Int iHeight, UInt nMode );
-UInt32 xQuant( Int16 *pDst, Int16 *pSrc, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType );
-void xDeQuant( Int16 *pDst, Int16 *pSrc, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType );
+void xSubDct ( Int16 *pDst, UInt8 *pSrc, UInt8 *pRef, UInt nStride, Int16 *piTmp0, Int16 *piTmp1, Int iWidth,  Int iHeight, UInt nMode );
+void xIDctAdd( UInt8 *pDst, Int16 *pSrc, UInt8 *pRef, UInt nStride, Int16 *piTmp0, Int16 *piTmp1, Int iWidth, Int iHeight, UInt nMode );
+UInt32 xQuant( Int16 *pDst, Int16 *pSrc, UInt nStride, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType );
+void xDeQuant( Int16 *pDst, Int16 *pSrc, UInt nStride, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType );
+
+// ***************************************************************************
+// * Cabac.cpp
+// ***************************************************************************
+void xCabacInit( X265_Cabac *pCabac );
 
 // ***************************************************************************
 // * TestVec.cpp
@@ -231,6 +249,21 @@ extern UInt8  tv_rec[MAX_CU_SIZE*MAX_CU_SIZE];
 extern UInt32 tv_mostmode[3];
 extern UInt32 tv_bestmode;
 extern UInt32 tv_sad[35];
+extern UInt8 tv_refC[2][MAX_CU_SIZE/2*4+1];
+extern UInt8 tv_predC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern UInt8 tv_origC[2][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_resiC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_transC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_quantC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_iquantC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_itransC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern UInt8  tv_recC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern UInt32 tv_mostmodeC[5];
+extern UInt32 tv_dmMode;
+extern UInt32 tv_bestmodeC;
+extern UInt32 tv_nModeC;
+extern UInt32 tv_nIdxC;
+extern UInt32 tv_sadC;
 int tInitTv( const char *fname );
 void tGetVector( );
 
