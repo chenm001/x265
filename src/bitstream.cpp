@@ -333,3 +333,186 @@ Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)
     }
     return(pucDst - pucDst0);
 }
+
+#define CABAC_ENTER \
+    UInt32  uiLow = pCabac->uiLow; \
+    UInt32  uiRange = pCabac->uiRange; \
+    Int32   iBitsLeft = pCabac->iBitsLeft; \
+    UInt8   ucCache = pCabac->ucCache; \
+    UInt32  uiNumBytes = pCabac->uiNumBytes;
+
+#define CABAC_LEAVE \
+    pCabac->uiLow = uiLow; \
+    pCabac->uiRange = uiRange; \
+    pCabac->iBitsLeft = iBitsLeft; \
+    pCabac->ucCache = ucCache; \
+    pCabac->uiNumBytes = uiNumBytes;
+
+
+// ***************************************************************************
+// * Entropy Functions
+// ***************************************************************************
+void xCabacInit( X265_Cabac *pCabac )
+{
+    pCabac->uiLow         = 0;
+    pCabac->uiRange       = 510;
+    pCabac->iBitsLeft     = 23;
+    pCabac->ucCache       = 0xFF;
+    pCabac->uiNumBytes    = 0;
+}
+
+void xCabacFlush( X265_Cabac *pCabac, X265_BitStream *pBS )
+{
+    CABAC_ENTER;
+    if ( uiLow >> (32 - iBitsLeft) ) {
+        //assert( uiNumBytes > 0 );
+        //assert( ucCache != 0xff );
+        WRITE_CODE( ucCache + 1, 8, "xCabacFlush0" );
+        while( uiNumBytes > 1 ) {
+            WRITE_CODE( 0x00, 8, "xCabacFlush1" );
+            uiNumBytes--;
+        }
+        uiLow -= 1 << ( 32 - iBitsLeft );
+    }
+    else  {
+        if ( uiNumBytes > 0 ) {
+            WRITE_CODE( ucCache, 8, "xCabacFlush2" );
+        }
+        while ( uiNumBytes > 1 ) {
+            WRITE_CODE( 0xFF, 8, "xCabacFlush3" );
+            uiNumBytes--;
+        }    
+    }
+    WRITE_CODE( uiLow >> 8, 24 - iBitsLeft, "xCabacFlush4" );
+    CABAC_LEAVE;
+}
+
+UInt xCabacGetNumWrittenBits( X265_Cabac *pCabac, X265_BitStream *pBS )
+{
+    Int32 iLen = xBitFlush(pBS);
+    return iLen + 8 * pCabac->uiNumBytes + 23 - pCabac->iBitsLeft;
+}
+
+#define GetMPS( state )     ( (state) &  1 )
+#define GetState( state )   ( (state) >> 1 )
+#define UpdateLPS( state )  ( (state) = g_aucNextStateLPS[ (state) ] )
+#define UpdateMPS( state )  ( (state) = g_aucNextStateMPS[ (state) ] )
+
+static void testAndWriteOut( X265_Cabac *pCabac, X265_BitStream *pBS )
+{
+    CABAC_ENTER;
+    while( iBitsLeft < 12 ) {
+        UInt leadByte = uiLow >> (24 - iBitsLeft);
+        iBitsLeft += 8;
+        uiLow     &= 0xFFFFFFFF >> iBitsLeft;
+
+        if ( leadByte == 0xff ) {
+            uiNumBytes++;
+        }
+        else {
+            if ( uiNumBytes > 0 ) {
+                UInt carry = leadByte >> 8;
+                UInt byte = ucCache + carry;
+                ucCache = leadByte & 0xff;
+                WRITE_CODE( byte, 8, "testAndWriteOut0" );
+
+                byte = ( 0xff + carry ) & 0xff;
+                while ( uiNumBytes > 1 ) {
+                    WRITE_CODE( byte, 8, "testAndWriteOut0" );
+                    uiNumBytes--;
+                }
+            }
+            else {
+                uiNumBytes = 1;
+                ucCache = leadByte;
+            }
+        }
+    }
+    CABAC_LEAVE;
+}
+
+void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt8 *pCtxState )
+{
+    CABAC_ENTER;
+    UInt8 ucState = *pCtxState;
+    UInt  uiLPS   = g_aucLPSTable[ GetState( ucState ) ][ ( uiRange >> 6 ) & 3 ];
+    uiRange    -= uiLPS;
+  
+    if( binValue != GetMPS(ucState) ) {
+        Int numBits = g_aucRenormTable[ uiLPS >> 3 ];
+        uiLow     = ( uiLow + uiRange ) << numBits;
+        uiRange   = uiLPS << numBits;
+        UpdateLPS( ucState );
+        
+        iBitsLeft -= numBits;
+    }
+    else {
+        UpdateMPS( ucState );
+        if ( uiRange < 256 ) {
+            uiLow <<= 1;
+            uiRange <<= 1;
+            iBitsLeft--;
+        }
+    }
+    
+    *pCtxState = ucState;
+    CABAC_LEAVE;
+
+    testAndWriteOut( pCabac, pBS );
+}
+
+void xCabacEncodeBinEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue )
+{
+    CABAC_ENTER;
+
+    uiLow <<= 1;
+    if( binValue ) {
+        uiLow += uiRange;
+    }
+    iBitsLeft--;
+    CABAC_LEAVE;
+
+    testAndWriteOut( pCabac, pBS );
+}
+
+void xCabacEncodeBinsEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValues, Int numBins )
+{
+    while ( numBins > 8 ) {
+        numBins -= 8;
+        UInt pattern = binValues >> numBins; 
+        pCabac->uiLow <<= 8;
+        pCabac->uiLow += pCabac->uiRange * pattern;
+        binValues -= pattern << numBins;
+        pCabac->iBitsLeft -= 8;
+
+        testAndWriteOut( pCabac, pBS );
+    }
+    
+    pCabac->uiLow <<= numBins;
+    pCabac->uiLow  += pCabac->uiRange * binValues;
+    pCabac->iBitsLeft -= numBins;
+
+    testAndWriteOut( pCabac, pBS );
+}
+
+void xCabacEncodeBinTrm( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue )
+{
+    CABAC_ENTER;
+
+    uiRange -= 2;
+    if( binValue ) {
+        uiLow  += uiRange;
+        uiLow <<= 7;
+        uiRange = 2 << 7;
+        iBitsLeft -= 7;
+    }
+    else if ( uiRange < 256 ) {
+        uiLow   <<= 1;
+        uiRange <<= 1;
+        iBitsLeft--;    
+    }
+
+    CABAC_LEAVE;
+    testAndWriteOut( pCabac, pBS );
+}
+

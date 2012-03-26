@@ -177,6 +177,13 @@ void xWriteSPS( X265_t *h );
 void xWritePPS( X265_t *h );
 void xWriteSliceHeader( X265_t *h );
 Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength);
+void xCabacInit( X265_Cabac *pCabac );
+void xCabacFlush( X265_Cabac *pCabac, X265_BitStream *pBS );
+UInt xCabacGetNumWrittenBits( X265_Cabac *pCabac, X265_BitStream *pBS );
+void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt8 *pCtxState );
+void xCabacEncodeBinEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue );
+void xCabacEncodeBinsEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValues, Int numBins );
+
 
 // ***************************************************************************
 // * set.cpp
@@ -197,6 +204,10 @@ extern const Int8 g_aiT32[32*32];
 extern const Int16 g_quantScales[6];
 extern const UInt8 g_invQuantScales[6];
 extern const UInt8 g_aucChromaScale[52];
+extern const UInt8 g_aucNextStateMPS[128];
+extern const UInt8 g_aucNextStateLPS[128];
+extern const UInt8 g_aucLPSTable[64][4];
+extern const UInt8 g_aucRenormTable[32];
 
 
 // ***************************************************************************
@@ -225,11 +236,6 @@ void xSubDct ( Int16 *pDst, UInt8 *pSrc, UInt8 *pRef, UInt nStride, Int16 *piTmp
 void xIDctAdd( UInt8 *pDst, Int16 *pSrc, UInt8 *pRef, UInt nStride, Int16 *piTmp0, Int16 *piTmp1, Int iWidth, Int iHeight, UInt nMode );
 UInt32 xQuant( Int16 *pDst, Int16 *pSrc, UInt nStride, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType );
 void xDeQuant( Int16 *pDst, Int16 *pSrc, UInt nStride, UInt nQP, Int iWidth, Int iHeight, X265_SliceType eSType );
-
-// ***************************************************************************
-// * Cabac.cpp
-// ***************************************************************************
-void xCabacInit( X265_Cabac *pCabac );
 
 // ***************************************************************************
 // * TestVec.cpp
