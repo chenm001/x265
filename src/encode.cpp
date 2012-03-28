@@ -47,6 +47,12 @@ void xEncInit( X265_t *h )
     #endif
 }
 
+void xWriteCU( X265_t *h )
+{
+    // SplitFlag
+
+}
+
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize )
 {
     const UInt32    uiWidth     = h->usWidth;
@@ -101,6 +107,8 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 
     /// Encode loop
     xEncCahceInit( h );
+    xCabacInit( h );
+    xCabacReset( &h->cabac );
     for( y=0; y < uiHeight; y+=h->ucMaxCUWidth ) {
         h->uiCUY = y;
         xEncCahceInitLine( h );
@@ -336,7 +344,7 @@ _exit:;
             }
 
             // Stage 4: Write CU
-            // TBD
+            xWriteCU( h );
 
             // Stage 5: Update context
             xEncCacheUpdate( h, 0, 0, nCUSize, nCUSize );

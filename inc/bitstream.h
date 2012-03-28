@@ -157,4 +157,52 @@ static void xWriteFlag( X265_BitStream *pBS, UInt32 uiCode )
     xPutBits( pBS, uiCode, 1 );
 }
 
+// ***************************************************************************
+// Cabac Table
+// ***************************************************************************
+#define MAX_NUM_CTX_MOD             256       ///< maximum number of supported contexts
+
+#define NUM_SPLIT_FLAG_CTX            3       ///< number of context models for split flag
+#define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
+
+#define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
+#define NUM_MERGE_IDX_EXT_CTX         1       ///< number of context models for merge index of merge extended
+
+#define NUM_ALF_CTRL_FLAG_CTX         1       ///< number of context models for ALF control flag
+#define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
+#define NUM_CU_AMP_CTX                1       ///< number of context models for partition size (AMP)
+#define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
+
+#define NUM_ADI_CTX                   1       ///< number of context models for intra prediction
+
+#define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
+#define NUM_INTER_DIR_CTX             4       ///< number of context models for inter prediction direction
+#define NUM_MV_RES_CTX                2       ///< number of context models for motion vector difference
+
+#define NUM_REF_NO_CTX                4       ///< number of context models for reference index
+#define NUM_TRANS_SUBDIV_FLAG_CTX     10      ///< number of context models for transform subdivision flags
+#define NUM_QT_CBF_CTX                5       ///< number of context models for QT CBF
+#define NUM_QT_ROOT_CBF_CTX           1       ///< number of context models for QT ROOT CBF
+#define NUM_DELTA_QP_CTX              3       ///< number of context models for dQP
+
+#define NUM_SIG_CG_FLAG_CTX           2       ///< number of context models for MULTI_LEVEL_SIGNIFICANCE
+
+#define NUM_SIG_FLAG_CTX              48      ///< number of context models for sig flag
+
+#define NUM_SIG_FLAG_CTX_LUMA         27      ///< number of context models for luma sig flag
+#define NUM_SIG_FLAG_CTX_CHROMA       21      ///< number of context models for chroma sig flag
+#define NUM_LAST_FLAG_XY_CTX          15      ///< number of context models for last coefficient position
+
+#define NUM_ONE_FLAG_CTX              24      ///< number of context models for greater than 1 flag
+#define NUM_ONE_FLAG_CTX_LUMA         16      ///< number of context models for greater than 1 flag of luma
+#define NUM_ONE_FLAG_CTX_CHROMA        8      ///< number of context models for greater than 1 flag of chroma
+#define NUM_ABS_FLAG_CTX               6      ///< number of context models for greater than 2 flag
+#define NUM_ABS_FLAG_CTX_LUMA          4      ///< number of context models for greater than 2 flag of luma
+#define NUM_ABS_FLAG_CTX_CHROMA        2      ///< number of context models for greater than 2 flag of chroma
+
+#define NUM_MVP_IDX_CTX                2       ///< number of context models for MVP index
+
+#define CNU                          154      ///< dummy initialization value for unused context models 'Context model Not Used'
+
+
 #endif /* __BS_H__ */

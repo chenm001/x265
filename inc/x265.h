@@ -118,11 +118,41 @@ typedef struct X265_Cache {
 } X265_Cache;
 
 typedef struct {
+    // Engine
     UInt32  uiLow;
     UInt32  uiRange;
     Int32   iBitsLeft;
     UInt8   ucCache;
     UInt32  uiNumBytes;
+
+    // Context Model
+    UInt8   contextModels[MAX_NUM_CTX_MOD];
+#define OFF_SPLIT_FLAG_CTX          ( 0 )
+#define OFF_SKIP_FLAG_CTX           ( OFF_SPLIT_FLAG_CTX        +   NUM_SPLIT_FLAG_CTX      )
+#define OFF_ALF_CTRL_FLAG_CTX       ( OFF_SKIP_FLAG_CTX         +   NUM_SKIP_FLAG_CTX       )
+#define OFF_MERGE_FLAG_EXT_CTX      ( OFF_ALF_CTRL_FLAG_CTX     +   NUM_ALF_CTRL_FLAG_CTX   )
+#define OFF_MERGE_IDX_EXT_CTX       ( OFF_MERGE_FLAG_EXT_CTX    +   NUM_MERGE_FLAG_EXT_CTX  )
+#define OFF_PART_SIZE_CTX           ( OFF_MERGE_IDX_EXT_CTX     +   NUM_MERGE_IDX_EXT_CTX   )
+#define OFF_CU_AMP_CTX              ( OFF_PART_SIZE_CTX         +   NUM_PART_SIZE_CTX       )
+#define OFF_PRED_MODE_CTX           ( OFF_CU_AMP_CTX            +   NUM_CU_AMP_CTX          )
+#define OFF_INTRA_PRED_CTX          ( OFF_PRED_MODE_CTX         +   NUM_PRED_MODE_CTX       )
+#define OFF_CHROMA_PRED_CTX         ( OFF_INTRA_PRED_CTX        +   NUM_ADI_CTX             )
+#define OFF_INTER_DIR_CTX           ( OFF_CHROMA_PRED_CTX       +   NUM_CHROMA_PRED_CTX     )
+#define OFF_MVD_CTX                 ( OFF_INTER_DIR_CTX         +   NUM_INTER_DIR_CTX       )
+#define OFF_REF_PIC_CTX             ( OFF_MVD_CTX               +   NUM_MV_RES_CTX          )
+#define OFF_DELTA_QP_CTX            ( OFF_REF_PIC_CTX           +   NUM_REF_NO_CTX          )
+#define OFF_QT_CBF_CTX              ( OFF_DELTA_QP_CTX          +   NUM_DELTA_QP_CTX        )
+#define OFF_QT_ROOT_CBF_CTX         ( OFF_QT_CBF_CTX            + 2*NUM_QT_CBF_CTX          )
+#define OFF_SIG_CG_FLAG_CTX         ( OFF_QT_ROOT_CBF_CTX       +   NUM_QT_ROOT_CBF_CTX     )
+#define OFF_SIG_FLAG_CTX            ( OFF_SIG_CG_FLAG_CTX       + 2*NUM_SIG_CG_FLAG_CTX     )
+#define OFF_LAST_X_CTX              ( OFF_SIG_FLAG_CTX          +   NUM_SIG_FLAG_CTX        )
+#define OFF_LAST_Y_CTX              ( OFF_LAST_X_CTX            + 2*NUM_LAST_FLAG_XY_CTX    )
+#define OFF_ONE_FLAG_CTX            ( OFF_LAST_Y_CTX            + 2*NUM_LAST_FLAG_XY_CTX    )
+#define OFF_ABS_FLAG_CTX            ( OFF_ONE_FLAG_CTX          +   NUM_ONE_FLAG_CTX        )
+#define OFF_MVP_IDX_CTX             ( OFF_ABS_FLAG_CTX          +   NUM_ABS_FLAG_CTX        )
+#define OFF_TRANS_SUBDIV_FLAG_CTX   ( OFF_MVP_IDX_CTX           +   NUM_MVP_IDX_CTX         )
+
+
 } X265_Cabac;
 
 /// main handle
@@ -177,6 +207,7 @@ void xWriteSPS( X265_t *h );
 void xWritePPS( X265_t *h );
 void xWriteSliceHeader( X265_t *h );
 Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength);
+void xCabacInit( X265_t *h );
 void xCabacReset( X265_Cabac *pCabac );
 void xCabacFlush( X265_Cabac *pCabac, X265_BitStream *pBS );
 UInt xCabacGetNumWrittenBits( X265_Cabac *pCabac, X265_BitStream *pBS );

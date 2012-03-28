@@ -350,8 +350,277 @@ Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)
 
 
 // ***************************************************************************
+// * Cabac tables
+// ***************************************************************************
+static const UInt8
+INIT_SPLIT_FLAG[3][NUM_SPLIT_FLAG_CTX] = {
+    { 139,  141,  157, }, 
+    { 107,  139,  126, }, 
+    { 107,  139,  126, }, 
+};
+
+static const UInt8 
+INIT_SKIP_FLAG[3][NUM_SKIP_FLAG_CTX] = {
+    { CNU,  CNU,  CNU, }, 
+    { 197,  185,  201, }, 
+    { 197,  185,  201, }, 
+};
+
+static const UInt8 
+INIT_ALF_CTRL_FLAG[3][NUM_ALF_CTRL_FLAG_CTX] = {
+    { 200, }, 
+    { 139, }, 
+    { 169, }, 
+};
+
+static const UInt8 
+INIT_MERGE_FLAG_EXT[3][NUM_MERGE_FLAG_EXT_CTX] = {
+    { CNU, }, 
+    { 110, }, 
+    { 154, }, 
+};
+
+static const UInt8 
+INIT_MERGE_IDX_EXT[3][NUM_MERGE_IDX_EXT_CTX] = {
+    { CNU, }, 
+    { 122, }, 
+    { 137, }, 
+};
+
+static const UInt8 
+INIT_PART_SIZE[3][NUM_PART_SIZE_CTX] = {
+    { 184,  CNU,  CNU,  CNU, }, 
+    { 154,  139,  CNU,  CNU, }, 
+    { 154,  139,  CNU,  CNU, }, 
+};
+
+static const UInt8 
+INIT_CU_AMP_POS[3][NUM_CU_AMP_CTX] = {
+    { CNU, }, 
+    { 154, }, 
+    { 154, }, 
+};
+
+static const UInt8 
+INIT_PRED_MODE[3][NUM_PRED_MODE_CTX] = {
+    { CNU, }, 
+    { 149, }, 
+    { 134, }, 
+};
+
+static const UInt8 
+INIT_INTRA_PRED_MODE[3][NUM_ADI_CTX] = {
+    { 184, }, 
+    { 154, }, 
+    { 183, }, 
+};
+
+static const UInt8 
+INIT_CHROMA_PRED_MODE[3][NUM_CHROMA_PRED_CTX] = {
+    {  63,  139, }, 
+    { 152,  139, }, 
+    { 152,  139, }, 
+};
+
+static const UInt8 
+INIT_INTER_DIR[3][NUM_INTER_DIR_CTX] = {
+    { CNU,  CNU,  CNU,  CNU, }, 
+    {  95,   79,   63,   31, }, 
+    {  95,   79,   63,   31, }, 
+};
+
+static const UInt8 
+INIT_MVD[3][NUM_MV_RES_CTX] = {
+    { CNU,  CNU, }, 
+    { 140,  198, }, 
+    { 169,  198, }, 
+};
+
+static const UInt8 
+INIT_REF_PIC[3][NUM_REF_NO_CTX] = {
+    { CNU,  CNU,  CNU,  CNU, }, 
+    { 153,  153,  139,  CNU, }, 
+    { 153,  153,  168,  CNU, }, 
+};
+
+static const UInt8 
+INIT_DQP[3][NUM_DELTA_QP_CTX] = {
+    { 154,  154,  154, }, 
+    { 154,  154,  154, }, 
+    { 154,  154,  154, }, 
+};
+
+static const UInt8 
+INIT_QT_CBF[3][2*NUM_QT_CBF_CTX] = {
+    { 111,  141,  CNU,  CNU,  CNU,   94,  138,  182,  CNU,  CNU, }, 
+    { 153,  111,  CNU,  CNU,  CNU,  149,  107,  167,  CNU,  CNU, }, 
+    { 153,  111,  CNU,  CNU,  CNU,  149,   92,  167,  CNU,  CNU, }, 
+};
+
+static const UInt8 
+INIT_QT_ROOT_CBF[3][NUM_QT_ROOT_CBF_CTX] = {
+    { CNU, }, 
+    {  79, }, 
+    {  79, }, 
+};
+
+static const UInt8 
+INIT_LAST[3][2*NUM_LAST_FLAG_XY_CTX] = {
+    {
+      110,  110,  124,  110,  140,  111,  125,  111,  127,  111,  111,  156,  127,  127,  111, 
+      108,  123,   63,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, 
+    },
+    {
+      125,  110,   94,  110,  125,  110,  125,  111,  111,  110,  139,  111,  111,  111,  125,  
+      108,  123,  108,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,
+    },
+    {
+      125,  110,  124,  110,  125,  110,  125,  111,  111,  110,  139,  111,  111,  111,  125, 
+      108,  123,   93,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, 
+    },
+};
+
+static const UInt8 
+INIT_SIG_CG_FLAG[3][2 * NUM_SIG_CG_FLAG_CTX] = {
+    {
+      91,  171,  
+     134,  141, 
+    },
+    {
+     121,  140, 
+      61,  154, 
+    },
+    {
+     121,  140,  
+      61,  154, 
+    },
+};
+
+static const UInt8 
+INIT_SIG_FLAG[3][NUM_SIG_FLAG_CTX] = {
+    { 141,  111,  125,  110,  110,   94,  124,  108,  124,  125,  139,  124,   63,  139,  168,  138,  107,  123,   92,  111,  141,  107,  125,  141,  179,  153,  125,  140,  139,  182,  123,   47,  153,  182,  137,  149,  192,  152,  224,  136,   31,  136,   74,  140,  141,  136,  139,  111, }, 
+    { 170,  154,  139,  153,  139,  123,  123,   63,  153,  168,  153,  152,   92,  152,  152,  137,  122,   92,   61,  155,  185,  166,  183,  140,  136,  153,  154,  155,  153,  123,   63,   61,  167,  153,  167,  136,  149,  107,  136,  121,  122,   91,  149,  170,  185,  151,  183,  140, }, 
+    { 170,  154,  139,  153,  139,  123,  123,   63,  124,  139,  153,  152,   92,  152,  152,  137,  137,   92,   61,  170,  185,  166,  183,  140,  136,  153,  154,  155,  153,  138,  107,   61,  167,  153,  167,  136,  121,  122,  136,  121,  122,   91,  149,  170,  170,  151,  183,  140, }, 
+};
+
+static const UInt8 
+INIT_ONE_FLAG[3][NUM_ONE_FLAG_CTX] = {
+    { 140,   92,  137,  138,  140,  152,  138,  139,  153,   74,  149,   92,  139,  107,  122,  152,  140,  179,  166,  182,  140,  227,  122,  197, }, 
+    { 154,  196,  196,  167,  154,  152,  167,  182,  182,  134,  149,  136,  153,  121,  136,  137,  169,  194,  166,  167,  154,  167,  137,  182, }, 
+    { 154,  196,  167,  167,  154,  152,  167,  182,  182,  134,  149,  136,  153,  121,  136,  122,  169,  208,  166,  167,  154,  152,  167,  182, }, 
+};
+
+static const UInt8 
+INIT_ABS_FLAG[3][NUM_ABS_FLAG_CTX] = {
+    { 138,  153,  136,  167,  152,  152, }, 
+    { 107,  167,   91,  122,  107,  167, }, 
+    { 107,  167,   91,  107,  107,  167, }, 
+};
+
+static const UInt8 
+INIT_MVP_IDX[3][NUM_MVP_IDX_CTX] = {
+    { CNU,  CNU, }, 
+    { 168,  CNU, }, 
+    { 168,  CNU, }, 
+};
+
+static const UInt8
+INIT_TRANS_SUBDIV_FLAG[3][NUM_TRANS_SUBDIV_FLAG_CTX] = {
+    { CNU,  224,  167,  122,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, }, 
+    { CNU,  124,  138,   94,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, }, 
+    { CNU,  153,  138,  138,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, }, 
+};
+
+
+// ***************************************************************************
 // * Entropy Functions
 // ***************************************************************************
+void xCabacInitEntry( UInt n, const Int qp, UInt8 *pucState, const UInt8 *pInitValue )
+{
+    Int i;
+    assert( (qp >= 0) && (qp <= 51) );
+
+    for( i=0; i<n; i++ ) {
+        Int initValue = pInitValue[i];
+        // [9.2.1.1]
+        Int  slopeIdx   = ( initValue >> 4);
+        Int  intersecIdx= ( initValue & 15 );
+        Int  m          = slopeIdx * 5 - 45;
+        Int  n          = ( intersecIdx << 3 ) - 16;
+        Int  initState  =  Clip3( 1, 126, ( ( ( m * qp ) >> 4 ) + n ) );
+        UInt valMPS     = (initState >= 64 );
+        pucState[i]     = ( (valMPS ? (initState - 64) : (63 - initState)) <<1) + valMPS;
+    }
+}
+
+void xCabacInit( X265_t *h )
+{
+          X265_Cabac   *pCabac  = &h->cabac;
+    const UInt          nSlice  = h->eSliceType;
+    const Int           iQp     = h->iQP;
+          UInt8        *pucState= pCabac->contextModels;
+          UInt          nOffset = 0;
+          Int           i;
+
+#define INIT_CABAC( n, m, v ) \
+    xCabacInitEntry( (m)*(n), iQp, pucState, (v)[nSlice] ); \
+    pucState += (n)*(m); \
+    nOffset  += (n)*(m);
+
+    assert( nOffset == OFF_SPLIT_FLAG_CTX );
+    INIT_CABAC( 1, NUM_SPLIT_FLAG_CTX,          INIT_SPLIT_FLAG         );
+    assert( nOffset == OFF_SKIP_FLAG_CTX );
+    INIT_CABAC( 1, NUM_SKIP_FLAG_CTX,           INIT_SKIP_FLAG          );
+    assert( nOffset == OFF_ALF_CTRL_FLAG_CTX );
+    INIT_CABAC( 1, NUM_ALF_CTRL_FLAG_CTX,       INIT_ALF_CTRL_FLAG      );
+    assert( nOffset == OFF_MERGE_FLAG_EXT_CTX );
+    INIT_CABAC( 1, NUM_MERGE_FLAG_EXT_CTX,      INIT_MERGE_FLAG_EXT     );
+    assert( nOffset == OFF_MERGE_IDX_EXT_CTX );
+    INIT_CABAC( 1, NUM_MERGE_IDX_EXT_CTX,       INIT_MERGE_IDX_EXT      );
+    assert( nOffset == OFF_PART_SIZE_CTX );
+    INIT_CABAC( 1, NUM_PART_SIZE_CTX,           INIT_PART_SIZE          );
+    assert( nOffset == OFF_CU_AMP_CTX );
+    INIT_CABAC( 1, NUM_CU_AMP_CTX,              INIT_CU_AMP_POS         );
+    assert( nOffset == OFF_PRED_MODE_CTX );
+    INIT_CABAC( 1, NUM_PRED_MODE_CTX,           INIT_PRED_MODE          );
+    assert( nOffset == OFF_INTRA_PRED_CTX );
+    INIT_CABAC( 1, NUM_ADI_CTX,                 INIT_INTRA_PRED_MODE    );
+    assert( nOffset == OFF_CHROMA_PRED_CTX );
+    INIT_CABAC( 1, NUM_CHROMA_PRED_CTX,         INIT_CHROMA_PRED_MODE   );
+    assert( nOffset == OFF_INTER_DIR_CTX );
+    INIT_CABAC( 1, NUM_INTER_DIR_CTX,           INIT_INTER_DIR          );
+    assert( nOffset == OFF_MVD_CTX );
+    INIT_CABAC( 1, NUM_MV_RES_CTX,              INIT_MVD                );
+    assert( nOffset == OFF_REF_PIC_CTX );
+    INIT_CABAC( 1, NUM_REF_NO_CTX,              INIT_REF_PIC            );
+    assert( nOffset == OFF_DELTA_QP_CTX );
+    INIT_CABAC( 1, NUM_DELTA_QP_CTX,            INIT_DQP                );
+    assert( nOffset == OFF_QT_CBF_CTX );
+    INIT_CABAC( 2, NUM_QT_CBF_CTX,              INIT_QT_CBF             );
+    assert( nOffset == OFF_QT_ROOT_CBF_CTX );
+    INIT_CABAC( 1, NUM_QT_ROOT_CBF_CTX,         INIT_QT_ROOT_CBF        );
+    assert( nOffset == OFF_SIG_CG_FLAG_CTX );
+    INIT_CABAC( 2, NUM_SIG_CG_FLAG_CTX,         INIT_SIG_CG_FLAG        );
+    assert( nOffset == OFF_SIG_FLAG_CTX );
+    INIT_CABAC( 1, NUM_SIG_FLAG_CTX,            INIT_SIG_FLAG           );
+    assert( nOffset == OFF_LAST_X_CTX );
+    INIT_CABAC( 2, NUM_LAST_FLAG_XY_CTX,        INIT_LAST               );
+    assert( nOffset == OFF_LAST_Y_CTX );
+    INIT_CABAC( 2, NUM_LAST_FLAG_XY_CTX,        INIT_LAST               );
+    assert( nOffset == OFF_ONE_FLAG_CTX );
+    INIT_CABAC( 1, NUM_ONE_FLAG_CTX,            INIT_ONE_FLAG           );
+    assert( nOffset == OFF_ABS_FLAG_CTX );
+    INIT_CABAC( 1, NUM_ABS_FLAG_CTX,            INIT_ABS_FLAG           );
+    assert( nOffset == OFF_MVP_IDX_CTX );
+    INIT_CABAC( 1, NUM_MVP_IDX_CTX,             INIT_MVP_IDX            );
+    assert( nOffset == OFF_TRANS_SUBDIV_FLAG_CTX );
+    INIT_CABAC( 1, NUM_TRANS_SUBDIV_FLAG_CTX,   INIT_TRANS_SUBDIV_FLAG  );
+
+#undef INIT_CABAC
+
+    assert( nOffset < MAX_NUM_CTX_MOD );
+}
+
 void xCabacReset( X265_Cabac *pCabac )
 {
     pCabac->uiLow         = 0;
