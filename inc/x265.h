@@ -177,7 +177,7 @@ void xWriteSPS( X265_t *h );
 void xWritePPS( X265_t *h );
 void xWriteSliceHeader( X265_t *h );
 Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength);
-void xCabacInit( X265_Cabac *pCabac );
+void xCabacReset( X265_Cabac *pCabac );
 void xCabacFlush( X265_Cabac *pCabac, X265_BitStream *pBS );
 UInt xCabacGetNumWrittenBits( X265_Cabac *pCabac, X265_BitStream *pBS );
 void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt8 *pCtxState );

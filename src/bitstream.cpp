@@ -352,7 +352,7 @@ Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)
 // ***************************************************************************
 // * Entropy Functions
 // ***************************************************************************
-void xCabacInit( X265_Cabac *pCabac )
+void xCabacReset( X265_Cabac *pCabac )
 {
     pCabac->uiLow         = 0;
     pCabac->uiRange       = 510;
