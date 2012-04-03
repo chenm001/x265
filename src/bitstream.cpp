@@ -209,6 +209,10 @@ void xWritePPS( X265_t *h )
     }
 #endif
 
+#if CABAC_INIT_FLAG
+    WRITE_FLAG( 1,                                          "cabac_init_present_flag" );
+#endif
+
 #if !RPS_IN_SPS
 #error Please Sync Code
 #endif
@@ -216,8 +220,6 @@ void xWritePPS( X265_t *h )
     // entropy_coding_mode_flag
     // We code the entropy_coding_mode_flag, it's needed for tests.
     WRITE_FLAG( 1,                                          "entropy_coding_mode_flag" );
-    WRITE_UVLC( 0,                                          "entropy_coding_synchro" );
-    WRITE_FLAG( 0,                                          "cabac_istate_reset" );
 #if !H0566_TLA
 #error Please Sync Code
 #endif
@@ -235,8 +237,15 @@ void xWritePPS( X265_t *h )
     WRITE_FLAG( 0,                                          "weighted_pred_flag" );   // Use of Weighting Prediction (P_SLICE)
     WRITE_CODE( 0, 2,                                       "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
 
-    WRITE_FLAG( 0,                                           "tile_info_present_flag" );
-    WRITE_FLAG( 0,                                           "tile_control_present_flag");
+    WRITE_FLAG( 0,                                          "output_flag_present_flag" );
+
+#if DBL_CONTROL
+    WRITE_FLAG( 1,                                          "deblocking_filter_control_present_flag");
+#endif
+#if PARALLEL_MERGE
+    WRITE_UVLC( 0,                                          "log2_parallel_merge_level_minus2");
+#endif
+    WRITE_FLAG( 0, "pps_extension_flag" );
     xWriteRBSPTrailingBits(pBS);
 }
 

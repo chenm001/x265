@@ -69,6 +69,9 @@
 // JCT-VC H start
 ////////////////////////////
 #define MULTIBITS_DATA_HIDING           1  ///< H0481: multiple sign bit hiding
+#define CABAC_INIT_FLAG                 1  ///< H0540:
+#define DBL_CONTROL                     1  ///< H0424: PPS deblocking_filter_control_present_flag (JCTVC-H0398); condition for inherit params flag in SH
+#define PARALLEL_MERGE                  1  ///< H0082: parallel merge/skip      
 ////////////////////////////
 // JCT-VC G end
 ////////////////////////////
