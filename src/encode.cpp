@@ -51,6 +51,7 @@ void xWriteCU( X265_t *h )
 {
     // SplitFlag
 
+
 }
 
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize )
@@ -87,22 +88,21 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 
     /// Write SPS Header
     xPutBits32(pBS, 0x01000000);
-    xPutBits(pBS, 0x67, 8);
+    xPutBits(pBS, 0x47, 8);
+    xPutBits(pBS, 0x01, 8); // temporal_id and reserved_one_5bits
     xWriteSPS(h);
     xBitFlush(pBS);
 
     /// Write PPS Header
     xPutBits32(pBS, 0x01000000);
-    xPutBits(pBS, 0x68, 8);
+    xPutBits(pBS, 0x48, 8);
+    xPutBits(pBS, 0x01, 8); // temporal_id and reserved_one_5bits
     xWritePPS(h);
     xBitFlush(pBS);
 
     /// Write Silces Header
-    xPutBits32(pBS, 0x65010000);
-    //xPutBits(pBS, 0, 3); // temporal_id
-    //xPutBits(pBS, 1, 1); // output_flag
-    //xPutBits(pBS, 1, 4); // reserved_one_4bits
-    xPutBits(pBS, 0x11, 8);
+    xPutBits32(pBS, 0x45010000);
+    xPutBits(pBS, 0x01, 8); // temporal_id and reserved_one_5bits
     xWriteSliceHeader(h);
 
     /// Encode loop
