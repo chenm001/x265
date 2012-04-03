@@ -93,6 +93,11 @@
 #define H0566_TLA                               1
 #define RPS_IN_SPS                              1 // Adopted during discussion of JCTVC-H0423
 #define H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER 1
+#define LOSSLESS_CODING                         1 ///< H0530: lossless and lossy (mixed) coding
+#define PIC_CROPPING                            1 ///< Picture cropping and size constraints
+#define NAL_REF_FLAG                            1 ///< Change nal_ref_idc to nal_ref_flag (JCTVC-F463)
+#define H0412_REF_PIC_LIST_RESTRICTION          1
+#define TILES_WPP_ENTRY_POINT_SIGNALLING        1 // JCTVC-H0556. Assumes either Tiles is ON or WPP is ON (not both simultaneously).
 
 
 typedef unsigned char       UInt8;

@@ -125,12 +125,18 @@ void xWriteSPS( X265_t *h )
     WRITE_CODE( 0,                          3,          "max_temporal_layers_minus1" );
     WRITE_UVLC( h->usWidth,                             "pic_width_in_luma_samples" );
     WRITE_UVLC( h->usHeight,                            "pic_height_in_luma_samples" );
-    
+#if PIC_CROPPING
+    WRITE_FLAG( 0,                                      "pic_cropping_flag" );
+#endif
+
     WRITE_UVLC( 0,                                      "bit_depth_luma_minus8" );
     WRITE_UVLC( 0,                                      "bit_depth_chroma_minus8" );
 
     WRITE_FLAG( 0,                                      "pcm_enabled_flag");
 
+#if LOSSLESS_CODING
+    WRITE_FLAG( 0,                                      "qpprime_y_zero_transquant_bypass_flag" );
+#endif
     WRITE_UVLC( h->ucBitsForPOC-4,                      "log2_max_pic_order_cnt_lsb_minus4" );
 #if H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER
   WRITE_UVLC( 1,                                        "max_dec_pic_buffering[i]" );
@@ -143,19 +149,25 @@ void xWriteSPS( X265_t *h )
     UInt32 MinCUSize = h->ucMaxCUWidth >> (h->ucMaxCUDepth - 1);
     UInt32 log2MinCUSize = xLog2(MinCUSize)-1;
 
+#if H0412_REF_PIC_LIST_RESTRICTION
+    WRITE_FLAG( 1,                                                                    "restricted_ref_pic_lists_flag" );
+    WRITE_FLAG( 0,                                                                    "lists_modification_present_flag" );
+#endif
     WRITE_UVLC( log2MinCUSize - 3,                                                    "log2_min_coding_block_size_minus3" );
     WRITE_UVLC( h->ucMaxCUDepth - 1,                                                  "log2_diff_max_min_coding_block_size" );
     WRITE_UVLC( h->ucQuadtreeTULog2MinSize - 2,                                       "log2_min_transform_block_size_minus2" );
     WRITE_UVLC( h->ucQuadtreeTULog2MaxSize - h->ucQuadtreeTULog2MinSize,              "log2_diff_max_min_transform_block_size" );
     if(log2MinCUSize == 3) {
-        WRITE_FLAG  ( 1,  "DisableInter4x4" );
+        WRITE_FLAG( 1,  "DisableInter4x4" );
     }
     WRITE_UVLC( h->ucQuadtreeTUMaxDepthInter - 1,                                     "max_transform_hierarchy_depth_inter" );
     WRITE_UVLC( h->ucQuadtreeTUMaxDepthIntra - 1,                                     "max_transform_hierarchy_depth_intra" );
     WRITE_FLAG( 0,                                                                    "scaling_list_enabled_flag" ); 
     WRITE_FLAG( 0,                                                                    "chroma_pred_from_luma_enabled_flag" );
     WRITE_FLAG( 0,                                                                    "deblocking_filter_in_aps_enabled_flag");
-    WRITE_FLAG( 1,                                                                    "loop_filter_across_slice_flag");
+    WRITE_FLAG( 1,                                                                    "seq_loop_filter_across_slices_enabled_flag");
+    WRITE_FLAG( 1,                                                                    "asymmetric_motion_partitions_enabled_flag" );
+    WRITE_FLAG( 1,                                                                    "non_square_quadtree_enabled_flag" );
     WRITE_FLAG( 0,                                                                    "sample_adaptive_offset_enabled_flag");
     WRITE_FLAG( 0,                                                                    "adaptive_loop_filter_enabled_flag");
     WRITE_FLAG( 0,                                                                    "temporal_id_nesting_flag" );
@@ -165,26 +177,17 @@ void xWriteSPS( X265_t *h )
     xWriteShortTermRefPicSet( h );
     WRITE_FLAG( 0, "long_term_ref_pics_present_flag" );
 #endif
-    //!!!KS: Syntax not in WD !!!
-
-    WRITE_UVLC( 0, "PadX" );
-    WRITE_UVLC( 0, "PadY" );
-    
-    // Tools
-    WRITE_FLAG( h->bMRG,  "SOPH/MRG" ); // SOPH:
     
     // AMVP mode for each depth
     for (i = 0; i < h->ucMaxCUDepth; i++) {
         WRITE_FLAG( 1, "AMVPMode");
     }
     
-    WRITE_FLAG( 0,  "uniform_spacing_idc" );
-    WRITE_UVLC( 0,  "num_tile_columns_minus1" );
-    WRITE_UVLC( 0,  "num_tile_rows_minus1" );
+#if TILES_WPP_ENTRY_POINT_SIGNALLING
+    WRITE_CODE( 0, 2,                                                                 "tiles_or_entropy_coding_sync_idc" );
+#endif
 
-    // Software-only flags
-    WRITE_FLAG( 1,  "enable_nsqt" );
-    WRITE_FLAG( 1,  "enable_amp" );
+    WRITE_FLAG( 0, "sps_extension_flag" );
 
     xWriteRBSPTrailingBits(pBS);
 }
