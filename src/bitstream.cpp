@@ -284,13 +284,8 @@ void xWriteSliceHeader( X265_t *h )
     }
 
     if ( h->eSliceType != SLICE_I ) {
-        WRITE_FLAG(0, "ref_pic_list_modification_flag" );    
-    }
-
-    // ref_pic_list_combination( )
-    // maybe move to own function?
-    if ( h->eSliceType != SLICE_I ) {
-        WRITE_UVLC(0,  "cabac_init_idc");
+        // Use P-Tables now
+        WRITE_FLAG( 0, "cabac_init_flag" );
     }
 
     WRITE_SVLC( h->iQP - 26, "slice_qp_delta" );
@@ -298,7 +293,6 @@ void xWriteSliceHeader( X265_t *h )
     //     sao_param()
     //   if( deblocking_filter_control_present_flag ) {
     //     disable_deblocking_filter_idc
-    WRITE_FLAG(0, "inherit_dbl_param_from_APS_flag");
     WRITE_FLAG( h->bLoopFilterDisable, "loop_filter_disable" );  // should be an IDC
 
     //     if( disable_deblocking_filter_idc  !=  1 ) {
@@ -321,10 +315,18 @@ void xWriteSliceHeader( X265_t *h )
     assert( MRG_MAX_NUM_CANDS_SIGNALED <= MRG_MAX_NUM_CANDS );
     WRITE_UVLC(MRG_MAX_NUM_CANDS - h->ucMaxNumMergeCand, "maxNumMergeCand");
 
-    WRITE_FLAG(0, "encodeTileMarkerFlag");
-    WRITE_FLAG(0, "iTransmitTileLocationInSliceHeader");
-
+    WRITE_FLAG( 0, "encodeTileMarkerFlag" );
     xWriteAlignOne(pBS);
+}
+
+void xWriteSliceEnd( X265_t *h )
+{
+    X265_BitStream *pBS = &h->bs;
+
+    WRITE_FLAG( 1, "stop bit" );
+#if TILES_WPP_ENTRY_POINT_SIGNALLING
+    xWriteAlignZero(pBS);
+#endif
 }
 
 Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)

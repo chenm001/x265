@@ -354,6 +354,7 @@ _exit:;
             #endif
         }
     }
+    xWriteSliceEnd( h );
 
     return xBitFlush( pBS );
 }
