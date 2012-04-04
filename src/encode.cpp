@@ -421,24 +421,29 @@ void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
     const UInt32 uiWidth    = h->usWidth;
     const UInt32 uiOffsetY  = uiWidth * uiY + uiX;
     const UInt32 uiOffsetC  = uiWidth * uiY / 4 + uiX / 2;
-    UInt8 *pucSY = pFrame->pucY + uiOffsetY;
-    UInt8 *pucSU = pFrame->pucU + uiOffsetC;
-    UInt8 *pucSV = pFrame->pucV + uiOffsetC;
-    UInt8 *pucDY = pCache->pucPixY;
-    UInt8 *pucDU = pCache->pucPixU;
-    UInt8 *pucDV = pCache->pucPixV;
+    UInt8 *pucSY0 = pFrame->pucY + uiOffsetY + 0*uiWidth;
+    UInt8 *pucSY1 = pFrame->pucY + uiOffsetY + 1*uiWidth;
+    UInt8 *pucSU  = pFrame->pucU + uiOffsetC;
+    UInt8 *pucSV  = pFrame->pucV + uiOffsetC;
+    UInt8 *pucDY0 = pCache->pucPixY + 0*MAX_CU_SIZE;
+    UInt8 *pucDY1 = pCache->pucPixY + 1*MAX_CU_SIZE;
+    UInt8 *pucDU  = pCache->pucPixU;
+    UInt8 *pucDV  = pCache->pucPixV;
     Int y;
 
-    for( y=0; y < h->ucMaxCUWidth; y++ ) {
-        memcpy( pucDY, pucSY, nCUWidth     );
-        memcpy( pucDU, pucSU, nCUWidth / 2 );
-        memcpy( pucDV, pucSV, nCUWidth / 2 );
-        pucSY += uiWidth;
-        pucSU += uiWidth / 2;
-        pucSV += uiWidth / 2;
-        pucDY += MAX_CU_SIZE;
-        pucDU += MAX_CU_SIZE / 2;
-        pucDV += MAX_CU_SIZE / 2;
+    for( y=0; y < h->ucMaxCUWidth/2; y++ ) {
+        memcpy( pucDY0, pucSY0, nCUWidth     );
+        memcpy( pucDY1, pucSY1, nCUWidth     );
+        memcpy( pucDU,  pucSU,  nCUWidth / 2 );
+        memcpy( pucDV,  pucSV,  nCUWidth / 2 );
+        pucSY0 += uiWidth * 2;
+        pucSY1 += uiWidth * 2;
+        pucSU  += uiWidth / 2;
+        pucSV  += uiWidth / 2;
+        pucDY0 += MAX_CU_SIZE * 2;
+        pucDY1 += MAX_CU_SIZE * 2;
+        pucDU  += MAX_CU_SIZE / 2;
+        pucDV  += MAX_CU_SIZE / 2;
     }
 }
 
