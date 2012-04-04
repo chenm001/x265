@@ -161,8 +161,9 @@ typedef struct X265_t {
     X265_BitStream  bs;
     X265_Cabac      cabac;
     X265_SliceType  eSliceType;
-    X265_Frame      refn[MAX_REF_NUM];
-    X265_Frame      *pFrame;
+    X265_Frame      refn[MAX_REF_NUM+1];
+    X265_Frame      *pFrameRec;
+    X265_Frame      *pFrameCur;
     X265_Cache      cache;
     Int32           iPoc;
     Int32           iQP;
@@ -246,10 +247,12 @@ extern const UInt8 g_aucRenormTable[32];
 // * Encode.cpp
 // ***************************************************************************
 void xEncInit( X265_t *h );
+void xEncFree( X265_t *h );
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize );
 void xEncCahceInit( X265_t *h );
 void xEncCahceInitLine( X265_t *h );
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
+void xEncCacheStoreCU( X265_t *h, UInt uiX, UInt uiY );
 void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeight );
 void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize );
 UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY );

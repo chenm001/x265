@@ -34,7 +34,7 @@ void xEncInit( X265_t *h )
     const UInt32 uiYSize    = uiWidth * uiHeight;
     int i;
 
-    for( i=0; i < MAX_REF_NUM; i++ ) {
+    for( i=0; i < MAX_REF_NUM+1; i++ ) {
         UInt8 *ptr = (UInt8 *)MALLOC(uiYSize * 3 / 2);
         assert(ptr != NULL);
         h->refn[i].pucY = (UInt8 *)ptr;
@@ -47,6 +47,19 @@ void xEncInit( X265_t *h )
     #endif
 }
 
+void xEncFree( X265_t *h )
+{
+    int i;
+    for( i=0; i < MAX_REF_NUM+1; i++ ) {
+        assert( h->refn[i].pucY != NULL );
+        FREE( h->refn[i].pucY );
+    }
+    memset( h->refn, 0, sizeof(h->refn) );
+}
+
+// ***************************************************************************
+// * Internal Functions
+// ***************************************************************************
 void xWriteCU( X265_t *h )
 {
     // SplitFlag
@@ -81,7 +94,8 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     UInt32 uiSum;
 
     /// Copy to local
-    h->pFrame = pFrame;
+    h->pFrameCur = pFrame;
+    h->pFrameRec = &h->refn[MAX_REF_NUM];
 
     /// Initial local
     xBitStreamInit( pBS, pucOutBuf, uiBufSize );
@@ -220,6 +234,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                 printf( " BestMode %d -> %d Failed!\n", tv_bestmode, nBestModeY );
                 abort();
             }
+            #endif
 
             // GetAllowedChromaMode
             pucMostModeC[0] = PLANAR_IDX;
@@ -346,15 +361,33 @@ _exit:;
             // Stage 4: Write CU
             xWriteCU( h );
 
-            // Stage 5: Update context
+            // Stage 5a: Update reconstr
+            xEncCacheStoreCU( h, x, y );
+
+            // Stage 5b: Update context
             xEncCacheUpdate( h, 0, 0, nCUSize, nCUSize );
             pCache->uiOffset += nCUSize;
 
+            #if (CHECK_TV)
             printf( "CU(%2d,%2d) Passed!\n", y/h->ucMaxCUWidth, x/h->ucMaxCUWidth );
             #endif
         }
     }
     xWriteSliceEnd( h );
+
+    {
+
+        FILE *fpx=fopen("OX.YUV", "wb");
+        assert( fpx != NULL );
+        fwrite(h->pFrameRec->pucY, 1, uiWidth*uiHeight*3/2, fpx);
+        fclose(fpx);
+    }
+    // Update Reference Frame Pointer
+    X265_Frame tmp = h->refn[MAX_REF_NUM];
+    for( i=MAX_REF_NUM; i>0; i-- ) {
+        h->refn[i] = h->refn[i-1];
+    }
+    h->refn[0] = tmp;
 
     return xBitFlush( pBS );
 }
@@ -383,7 +416,7 @@ void xEncCahceInitLine( X265_t *h )
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
 {
     X265_Cache  *pCache     = &h->cache;
-    X265_Frame  *pFrame     = h->pFrame;
+    X265_Frame  *pFrame     = h->pFrameCur;
     const UInt   nCUWidth   = h->ucMaxCUWidth;
     const UInt32 uiWidth    = h->usWidth;
     const UInt32 uiOffsetY  = uiWidth * uiY + uiX;
@@ -406,6 +439,40 @@ void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
         pucDY += MAX_CU_SIZE;
         pucDU += MAX_CU_SIZE / 2;
         pucDV += MAX_CU_SIZE / 2;
+    }
+}
+
+void xEncCacheStoreCU( X265_t *h, UInt uiX, UInt uiY )
+{
+    X265_Cache  *pCache     = &h->cache;
+    X265_Frame  *pFrame     = h->pFrameRec;
+    const UInt   nCUWidth   = h->ucMaxCUWidth;
+    const UInt32 uiWidth    = h->usWidth;
+    const UInt32 uiOffsetY  = uiWidth * uiY + uiX;
+    const UInt32 uiOffsetC  = uiWidth * uiY / 4 + uiX / 2;
+    UInt8 *pucSY0 = pCache->pucRecY + 0*MAX_CU_SIZE;
+    UInt8 *pucSY1 = pCache->pucRecY + 1*MAX_CU_SIZE;
+    UInt8 *pucSU  = pCache->pucRecU;
+    UInt8 *pucSV  = pCache->pucRecV;
+    UInt8 *pucDY0 = pFrame->pucY + uiOffsetY + 0*uiWidth;
+    UInt8 *pucDY1 = pFrame->pucY + uiOffsetY + 1*uiWidth;
+    UInt8 *pucDU  = pFrame->pucU + uiOffsetC;
+    UInt8 *pucDV  = pFrame->pucV + uiOffsetC;
+    Int y;
+
+    for( y=0; y < h->ucMaxCUWidth/2; y++ ) {
+        memcpy( pucDY0, pucSY0, nCUWidth     );
+        memcpy( pucDY1, pucSY1, nCUWidth     );
+        memcpy( pucDU,  pucSU,  nCUWidth / 2 );
+        memcpy( pucDV,  pucSV,  nCUWidth / 2 );
+        pucSY0 += MAX_CU_SIZE * 2;
+        pucSY1 += MAX_CU_SIZE * 2;
+        pucSU  += MAX_CU_SIZE / 2;
+        pucSV  += MAX_CU_SIZE / 2;
+        pucDY0 += uiWidth*2;
+        pucDY1 += uiWidth*2;
+        pucDU  += uiWidth / 2;
+        pucDV  += uiWidth / 2;
     }
 }
 
