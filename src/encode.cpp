@@ -23,6 +23,9 @@
  *****************************************************************************/
 
 #include "x265.h"
+#ifdef CHECK_SEI
+#include "md5.h"
+#endif
 
 // ***************************************************************************
 // * Interface Functions
@@ -92,6 +95,9 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     Int x, y;
     Int i;
     UInt32 uiSum;
+    #ifdef CHECK_SEI
+    UInt nOffsetSEI = 0;
+    #endif
 
     /// Copy to local
     h->pFrameCur = pFrame;
@@ -113,6 +119,22 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     xPutBits(pBS, 0x01, 8); // temporal_id and reserved_one_5bits
     xWritePPS(h);
     xBitFlush(pBS);
+
+    #ifdef CHECK_SEI
+    /// Write SEI Header
+    xPutBits32(pBS, 0x06010000);
+    xPutBits(pBS, 0x01,        8); // temporal_id and reserved_one_5bits
+    xPutBits(pBS, 0xFF01,     16); // PICTURE_DIGEST
+    xPutBits(pBS, 0x11,        8); // Payload length
+    xPutBits(pBS, 0x00,        8); // Method = MD5
+    nOffsetSEI = xBitFlush(pBS);
+    xPutBits(pBS, 0xA0A1A2A3, 32);
+    xPutBits(pBS, 0xB4B5B6B7, 32);
+    xPutBits(pBS, 0xC8C9CACB, 32);
+    xPutBits(pBS, 0xDCDDDEDF, 32);
+    xWriteRBSPTrailingBits(pBS);
+    xBitFlush(pBS);
+    #endif
 
     /// Write Silces Header
     xPutBits32(pBS, 0x45010000);
@@ -375,13 +397,23 @@ _exit:;
     }
     xWriteSliceEnd( h );
 
-    {
+    #ifdef CHECK_SEI
+    MD5Context ctx;
+    MD5Init( &ctx );
+    MD5Update( &ctx, h->pFrameRec->pucY, uiWidth*uiHeight*3/2 );
+    MD5Final( &ctx, &pucOutBuf[nOffsetSEI] );
+    #endif
 
+    #if 0
+    // Save Restruct
+    {
         FILE *fpx=fopen("OX.YUV", "wb");
         assert( fpx != NULL );
         fwrite(h->pFrameRec->pucY, 1, uiWidth*uiHeight*3/2, fpx);
         fclose(fpx);
     }
+    #endif
+
     // Update Reference Frame Pointer
     X265_Frame tmp = h->refn[MAX_REF_NUM];
     for( i=MAX_REF_NUM; i>0; i-- ) {
