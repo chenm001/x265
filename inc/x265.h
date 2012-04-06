@@ -73,6 +73,14 @@ typedef enum {
     MODE_DC         =   3,
 } eIntraMode;
 
+/// coefficient scanning type used in ACS
+typedef enum {
+    SCAN_ZIGZAG = 0,    ///< typical zigzag scan
+    SCAN_HOR    = 1,    ///< horizontal first scan
+    SCAN_VER    = 2,    ///< vertical first scan
+    SCAN_DIAG   = 3     ///< up-right diagonal scan
+} eScanType;
+
 typedef struct X265_Cache {
     /// context
     UInt32  uiOffset;
@@ -108,9 +116,10 @@ typedef struct X265_Cache {
     UInt8   bValid[5];
 
     /// Encode coeff buffer
-    Int16   piCoefY[MAX_CU_SIZE*MAX_CU_SIZE];
-    Int16   piCoefU[MAX_CU_SIZE*MAX_CU_SIZE/4];
-    Int16   piCoefV[MAX_CU_SIZE*MAX_CU_SIZE/4];
+    UInt8   bCbf[3];
+    Int16   psCoefY[MAX_CU_SIZE*MAX_CU_SIZE];
+    Int16   psCoefU[MAX_CU_SIZE*MAX_CU_SIZE/4];
+    Int16   psCoefV[MAX_CU_SIZE*MAX_CU_SIZE/4];
 
 
     /// Temp buffer
@@ -151,7 +160,6 @@ typedef struct {
 #define OFF_ABS_FLAG_CTX            ( OFF_ONE_FLAG_CTX          +   NUM_ONE_FLAG_CTX        )
 #define OFF_MVP_IDX_CTX             ( OFF_ABS_FLAG_CTX          +   NUM_ABS_FLAG_CTX        )
 #define OFF_TRANS_SUBDIV_FLAG_CTX   ( OFF_MVP_IDX_CTX           +   NUM_MVP_IDX_CTX         )
-
 
 } X265_Cabac;
 
@@ -213,9 +221,12 @@ void xCabacInit( X265_t *h );
 void xCabacReset( X265_Cabac *pCabac );
 void xCabacFlush( X265_Cabac *pCabac, X265_BitStream *pBS );
 UInt xCabacGetNumWrittenBits( X265_Cabac *pCabac, X265_BitStream *pBS );
-void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt8 *pCtxState );
+void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt nCtxState );
 void xCabacEncodeBinEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue );
 void xCabacEncodeBinsEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValues, Int numBins );
+void xCabacEncodeTerminatingBit( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue );
+void xWriteEpExGolomb( X265_Cabac *pCabac, X265_BitStream *pBS, UInt uiSymbol, UInt uiCount );
+void xWriteGoRiceExGolomb( X265_Cabac *pCabac, X265_BitStream *pBS, UInt uiSymbol, UInt &ruiGoRiceParam );
 
 
 // ***************************************************************************
@@ -241,7 +252,15 @@ extern const UInt8 g_aucNextStateMPS[128];
 extern const UInt8 g_aucNextStateLPS[128];
 extern const UInt8 g_aucLPSTable[64][4];
 extern const UInt8 g_aucRenormTable[32];
-
+extern const UInt16 *g_ausScanIdx[4][5];
+extern const UInt16 g_sigLastScan8x8[4][4];
+extern const UInt16 g_sigLastScanCG32x32[64];
+extern const UInt8 g_uiMinInGroup[10];
+extern const UInt8 g_uiGroupIdx[32];
+extern const UInt8 g_uiLastCtx[28];
+extern const UInt8 g_auiGoRiceRange[5];
+extern const UInt8 g_auiGoRicePrefixLen[5];
+extern const UInt g_aauiGoRiceUpdate[5][24];
 
 // ***************************************************************************
 // * Encode.cpp

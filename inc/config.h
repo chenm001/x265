@@ -79,8 +79,14 @@
 ////////////////////////////
 // JCT-VC G start
 ////////////////////////////
-#define MRG_MAX_NUM_CANDS_SIGNALED      5           //<G091: value of maxNumMergeCand signaled in slice header 
-#define MRG_MAX_NUM_CANDS               5           // MERGE
+#define MRG_MAX_NUM_CANDS_SIGNALED      5  ///< G091: value of maxNumMergeCand signaled in slice header 
+#define MRG_MAX_NUM_CANDS               5  ///< MERGE
+#define MLS_GRP_NUM                    64  ///< G644: Max number of coefficient groups, max(16, 64)
+#define MLS_CG_SIZE                     4  ///< G644: Coefficient group size of 4x4
+#define SCAN_SET_SIZE                  16
+#define LOG2_SCAN_SET_SIZE              4
+#define C1FLAG_NUMBER                   8  ///< maximum number of largerThan1 flag coded in one chunk :  16 in HM5
+#define C2FLAG_NUMBER                   1  ///< maximum number of largerThan2 flag coded in one chunk:  16 in HM5 
 ////////////////////////////
 // JCT-VC G end
 ////////////////////////////

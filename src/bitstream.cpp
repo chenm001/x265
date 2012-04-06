@@ -178,8 +178,15 @@ void xWriteSPS( X265_t *h )
     WRITE_FLAG( 0, "long_term_ref_pics_present_flag" );
 #endif
     
+    UInt32 splitCUSize = (h->ucMaxCUWidth >> h->ucMaxCUDepth);
+    UInt32 nAMVPNum = h->ucMaxCUDepth;
+    // CHECK_ME: check only, sync to HM-6.1
+    if ( splitCUSize > h->ucQuadtreeTULog2MinSize ) {
+        UInt nDiff = xLog2( splitCUSize - 1) - xLog2( h->ucQuadtreeTULog2MinSize );
+        nAMVPNum += nDiff;
+    }
     // AMVP mode for each depth
-    for (i = 0; i < h->ucMaxCUDepth; i++) {
+    for (i = 0; i < nAMVPNum; i++) {
         WRITE_FLAG( 1, "AMVPMode");
     }
     
@@ -255,11 +262,6 @@ void xWriteSliceHeader( X265_t *h )
 #if ENC_DEC_TRACE  
     xTraceSliceHeader();
 #endif
-    // See NALWrite.cpp :: write(...)
-    //xPutBits(pBS, 0, 3); // temporal_id
-    //xPutBits(pBS, 1, 1); // output_flag
-    //xPutBits(pBS, 1, 4); // reserved_one_4bits
-    
     //write slice address
     WRITE_FLAG( 1,              "first_slice_in_pic_flag" );
 
@@ -267,9 +269,10 @@ void xWriteSliceHeader( X265_t *h )
     WRITE_FLAG( 0,              "lightweight_slice_flag" );
 
     WRITE_UVLC( 0,              "pic_parameter_set_id" );
-    if ( h->eSliceType == SLICE_I ) {
+    if ( h->eSliceType == SLICE_I && h->iPoc == 0 ) {
       WRITE_UVLC( 0, "idr_pic_id" );
       WRITE_FLAG( 0, "no_output_of_prior_pics_flag" );
+      h->iPoc = 0;
     }
     else {
       WRITE_CODE( h->iPoc % (1<<h->ucBitsForPOC), h->ucBitsForPOC, "pic_order_cnt_lsb");
@@ -327,6 +330,7 @@ void xWriteSliceEnd( X265_t *h )
 #if TILES_WPP_ENTRY_POINT_SIGNALLING
     xWriteAlignZero(pBS);
 #endif
+    xWriteRBSPTrailingBits(pBS);
 }
 
 Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)
@@ -714,10 +718,10 @@ static void testAndWriteOut( X265_Cabac *pCabac, X265_BitStream *pBS )
     CABAC_LEAVE;
 }
 
-void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt8 *pCtxState )
+void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UInt nCtxState )
 {
     CABAC_ENTER;
-    UInt8 ucState = *pCtxState;
+    UInt8 ucState = pCabac->contextModels[nCtxState];
     UInt  uiLPS   = g_aucLPSTable[ GetState( ucState ) ][ ( uiRange >> 6 ) & 3 ];
     uiRange    -= uiLPS;
   
@@ -738,7 +742,7 @@ void xCabacEncodeBin( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue, UI
         }
     }
     
-    *pCtxState = ucState;
+    pCabac->contextModels[nCtxState] = ucState;
     CABAC_LEAVE;
 
     testAndWriteOut( pCabac, pBS );
@@ -778,7 +782,7 @@ void xCabacEncodeBinsEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValues
     testAndWriteOut( pCabac, pBS );
 }
 
-void xCabacEncodeBinTrm( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue )
+void xCabacEncodeTerminatingBit( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue )
 {
     CABAC_ENTER;
 
@@ -799,3 +803,53 @@ void xCabacEncodeBinTrm( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue 
     testAndWriteOut( pCabac, pBS );
 }
 
+void xWriteEpExGolomb( X265_Cabac *pCabac, X265_BitStream *pBS, UInt uiSymbol, UInt uiCount )
+{
+    UInt bins = 0;
+    Int numBins = 0;
+  
+    while( uiSymbol >= (UInt)(1<<uiCount) ) {
+        bins = 2 * bins + 1;
+        numBins++;
+        uiSymbol -= 1 << uiCount;
+        uiCount  ++;
+    }
+    bins = 2 * bins + 0;
+    numBins++;
+  
+    bins = (bins << uiCount) | uiSymbol;
+    numBins += uiCount;
+  
+    assert( numBins <= 32 );
+    xCabacEncodeBinsEP( pCabac, pBS, bins, numBins );
+}
+
+void xWriteGoRiceExGolomb( X265_Cabac *pCabac, X265_BitStream *pBS, UInt uiSymbol, UInt &ruiGoRiceParam )
+{
+    UInt uiMaxVlc     = g_auiGoRiceRange[ ruiGoRiceParam ];
+    UInt bExGolomb    = ( uiSymbol > uiMaxVlc );
+    UInt uiCodeWord   = MIN( uiSymbol, ( uiMaxVlc + 1 ) );
+    UInt uiQuotient   = uiCodeWord >> ruiGoRiceParam;
+    UInt uiMaxPreLen  = g_auiGoRicePrefixLen[ ruiGoRiceParam ];
+    
+    UInt binValues;
+    Int numBins;
+    
+    if ( uiQuotient >= uiMaxPreLen ) {
+        numBins = uiMaxPreLen;
+        binValues = ( 1 << numBins ) - 1;
+    }
+    else {
+        numBins = uiQuotient + 1;
+        binValues = ( 1 << numBins ) - 2;
+    }
+    
+    xCabacEncodeBinsEP( pCabac, pBS, ( binValues << ruiGoRiceParam ) + uiCodeWord - ( uiQuotient << ruiGoRiceParam ), numBins + ruiGoRiceParam );
+    
+    ruiGoRiceParam = g_aauiGoRiceUpdate[ruiGoRiceParam][MIN(uiSymbol, 23)];
+    
+    if( bExGolomb ) {
+        uiSymbol -= uiMaxVlc + 1;
+        xWriteEpExGolomb( pCabac, pBS, uiSymbol, 0 );
+    }
+}

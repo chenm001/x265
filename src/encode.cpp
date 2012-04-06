@@ -44,8 +44,9 @@ void xEncInit( X265_t *h )
         h->refn[i].pucU = (UInt8 *)ptr + uiYSize;
         h->refn[i].pucV = (UInt8 *)ptr + uiYSize * 5 / 4;
     }
+    h->iPoc = -1;
     #if (CHECK_TV)
-    if ( tInitTv( "CHEN_TV.TXT" ) < 0)
+    if( tInitTv( "CHEN_TV.TXT" ) < 0)
         abort();
     #endif
 }
@@ -63,23 +64,542 @@ void xEncFree( X265_t *h )
 // ***************************************************************************
 // * Internal Functions
 // ***************************************************************************
-void xWriteCU( X265_t *h )
+UInt32 countNonZeroCoeffs( Int16 *psCoef, UInt nStride, UInt nSize )
 {
-    // SplitFlag
+    Int count = 0;
+    Int x, y;
 
+    for( y=0; y<nSize; y++ ) {
+        for( x=0; x<nSize; x++ ) {
+            count += (psCoef[y*nStride+x] != 0);
+        }
+    }
 
+    return count;
+}
+
+UInt getCoefScanIdx( UInt nWidth, UInt8 bIsIntra, UInt8 bIsLuma, UInt nLumaMode )
+{
+    UInt uiCTXIdx;
+    UInt nScanIdx;
+    UInt uiDirMode;
+    
+    if( !bIsIntra ) {
+        return SCAN_ZIGZAG;
+    }
+    
+    switch( nWidth ) {
+    case  2: uiCTXIdx = 6; break;
+    case  4: uiCTXIdx = 5; break;
+    case  8: uiCTXIdx = 4; break;
+    case 16: uiCTXIdx = 3; break;
+    case 32: uiCTXIdx = 2; break;
+    case 64: uiCTXIdx = 1; break;
+    default: uiCTXIdx = 0; break;
+    }
+    
+    if( bIsLuma ) {
+        nScanIdx = SCAN_ZIGZAG;
+        if( uiCTXIdx > 3 && uiCTXIdx < 6 ) {
+            //if multiple scans supported for PU size
+            nScanIdx = abs((Int) nLumaMode - VER_IDX) < 5 ? 1 : (abs((Int)nLumaMode - HOR_IDX) < 5 ? 2 : 0);
+        }
+    }
+    else {
+        nScanIdx = SCAN_ZIGZAG;
+        if( uiCTXIdx > 4 && uiCTXIdx < 7 ) {
+            //if multiple scans supported for PU size
+            nScanIdx = abs((Int) nLumaMode - VER_IDX) < 5 ? 1 : (abs((Int)nLumaMode - HOR_IDX) < 5 ? 2 : 0);
+        }
+    }
+
+    return nScanIdx;
+}
+
+Int getSigCtxInc(Int16 *psCoeff, Int posX, Int posY, Int blockType, Int nSize, UInt8 bIsLuma)
+{
+    const Int width  = nSize;
+    const Int height = nSize;
+    const UInt nStride = (MAX_CU_SIZE >> !bIsLuma);
+
+    if( blockType == 2 ) {
+        //LUMA map
+        const Int ctxIndMap4x4Luma[15] = {
+            0, 1, 4, 5,
+            2, 3, 4, 5,
+            6, 6, 8, 8,
+            7, 7, 8
+        };
+        //CHROMA map
+        const Int ctxIndMap4x4Chroma[15] = {
+            0, 1, 2, 4,
+            1, 1, 2, 4,
+            3, 3, 5, 5,
+            4, 4, 5
+        };
+        
+        if( bIsLuma ) {
+            return ctxIndMap4x4Luma[ 4 * posY + posX ];
+        }
+        else {
+            return ctxIndMap4x4Chroma[ 4 * posY + posX ];
+        }
+    }
+    else if( blockType == 3 ) {
+        const Int map8x8[16] = {
+            0,  1,  2,  3,
+            4,  5,  6,  3,
+            8,  6,  6,  7,
+            9,  9,  7,  7
+        };
+        
+        Int offset = bIsLuma ? 9 : 6;
+        
+        if( posX + posY == 0 ) {
+            return offset + 10;
+        }
+        else {
+            return offset + map8x8[4 * (posY >> 1) + (posX >> 1)];
+        }
+    }
+    
+    Int offset = bIsLuma ? 20 : 17;
+    if( posX + posY == 0 ) {
+        return offset;
+    }
+    Int thredHighFreq = 3*(MAX(width, height)>>4);
+    if( (posX>>2) + (posY>>2) >= thredHighFreq ) {
+        return bIsLuma ? 24 : 18;
+    }
+    
+    const Int16 *pData = psCoeff + posY * nStride + posX;
+    
+    Int cnt = 0;
+    if( posX < width - 1 ) {
+        cnt += (pData[1] != 0);
+        if( posY < height - 1 ) {
+            cnt += (pData[nStride+1] != 0);
+        }
+        if( posX < width - 2 ) {
+            cnt += (pData[2] != 0);
+        }
+    }
+    if( posY < height - 1 ) {
+        if( ( ( posX & 3 ) || ( posY & 3 ) ) && ( ( (posX+1) & 3 ) || ( (posY+2) & 3 ) ) ) {
+            cnt += pData[nStride] != 0;
+        }
+        if( posY < height - 2 && cnt < 4 ) {
+            cnt += pData[2*nStride] != 0;
+        }
+    }
+    
+    cnt = ( cnt + 1 ) >> 1;
+    return (( bIsLuma && ((posX>>2) + (posY>>2)) > 0 ) ? 4 : 1) + offset + cnt;
+}
+
+UInt getSigCoeffGroupCtxInc(const UInt8 *uiSigCoeffGroupFlag, const UInt nCGPosX, const UInt nCGPosY, const UInt scanIdx, UInt nSize)
+{
+    UInt uiRight = 0;
+    UInt uiLower = 0;
+    UInt width = nSize;
+    UInt height = nSize;
+    
+    width >>= 2;
+    height >>= 2;
+    // 8x8
+    if( nSize == 8 ) {
+        if( scanIdx == SCAN_HOR ) {
+            width = 1;
+            height = 4;
+        }
+        else if( scanIdx == SCAN_VER ) {
+            width = 4;
+            height = 1;
+        }
+    }
+    if( nCGPosX < width - 1 ) {
+        uiRight = (uiSigCoeffGroupFlag[ nCGPosY * width + nCGPosX + 1 ] != 0);
+    }
+    if( nCGPosY < height - 1 ) {
+        uiLower = (uiSigCoeffGroupFlag[ (nCGPosY  + 1 ) * width + nCGPosX ] != 0);
+    }
+    return (uiRight || uiLower);
+}
+
+void codeLastSignificantXY( X265_Cabac *pCabac, X265_BitStream *pBS, UInt nPosX, UInt nPosY, UInt nSize, UInt8 bIsLuma, UInt nScanIdx )
+{
+    const UInt nLog2Size = xLog2( nSize - 1 );
+    int i;
+
+    // swap
+    if( nScanIdx == SCAN_VER ) {
+        UInt tmp = nPosX;
+        nPosY = nPosX;
+        nPosX = tmp;
+    }
+
+    UInt nCtxLast;
+    UInt nCtxX = OFF_LAST_X_CTX + (bIsLuma ? 0 : NUM_LAST_FLAG_XY_CTX);
+    UInt nCtxY = OFF_LAST_Y_CTX + (bIsLuma ? 0 : NUM_LAST_FLAG_XY_CTX);
+    UInt uiGroupIdxX    = g_uiGroupIdx[ nPosX ];
+    UInt uiGroupIdxY    = g_uiGroupIdx[ nPosY ];
+    
+    // posX
+    Int iLog2WidthCtx = bIsLuma ? nLog2Size-2 : 0;
+    const UInt8 *puiCtxIdxX = g_uiLastCtx + ( iLog2WidthCtx * ( iLog2WidthCtx + 3 ) );
+    for( nCtxLast = 0; nCtxLast < uiGroupIdxX; nCtxLast++ ) {
+        xCabacEncodeBin( pCabac, pBS, 1, nCtxX + ( bIsLuma ? puiCtxIdxX[nCtxLast] : (nCtxLast>>(nLog2Size-2)) ) );
+    }
+    if( uiGroupIdxX < g_uiGroupIdx[nSize-1]) {
+        xCabacEncodeBin( pCabac, pBS, 0, nCtxX + ( bIsLuma ? puiCtxIdxX[nCtxLast] : (nCtxLast>>(nLog2Size-2)) ) );
+    }
+    
+    // posY
+    Int iLog2HeightCtx = bIsLuma ? nLog2Size-2 : 0;
+    const UInt8 *puiCtxIdxY = g_uiLastCtx + ( iLog2WidthCtx * ( iLog2WidthCtx + 3 ) );
+    for( nCtxLast = 0; nCtxLast < uiGroupIdxY; nCtxLast++ ) {
+        xCabacEncodeBin( pCabac, pBS, 1, nCtxY + ( bIsLuma ? puiCtxIdxY[nCtxLast] : (nCtxLast>>(nLog2Size-2)) ) );
+    }
+    if( uiGroupIdxY < g_uiGroupIdx[ nSize - 1 ]) {
+        xCabacEncodeBin( pCabac, pBS, 0, nCtxY + ( bIsLuma ? puiCtxIdxY[nCtxLast] : (nCtxLast>>(nLog2Size-2)) ) );
+    }
+
+    if( uiGroupIdxX > 3 ) {      
+        UInt nCount = ( uiGroupIdxX - 2 ) >> 1;
+        nPosX       = nPosX - g_uiMinInGroup[ uiGroupIdxX ];
+        xCabacEncodeBinsEP( pCabac, pBS, nPosX, nCount );
+    }
+    if( uiGroupIdxY > 3 ) {      
+        UInt nCount = ( uiGroupIdxY - 2 ) >> 1;
+        nPosY       = nPosY - g_uiMinInGroup[ uiGroupIdxY ];
+        xCabacEncodeBinsEP( pCabac, pBS, nPosY, nCount );
+    }
+}
+
+void xEncodeCoeffNxN( X265_Cabac *pCabac, X265_BitStream *pBS, Int16 *psCoef, UInt nSize, UInt nDepth, UInt8 bIsLuma, UInt nLumaMode )
+{
+    const UInt      nStride      = (MAX_CU_SIZE >> !bIsLuma);
+          UInt      nLog2Size    = xLog2( nSize - 1 );
+          UInt32    uiNumSig     = countNonZeroCoeffs( psCoef, nStride, nSize );
+          UInt      nScanIdx     = getCoefScanIdx( nSize, TRUE, bIsLuma, nLumaMode );
+    const UInt16   *scan         = NULL;
+    const UInt16   *scanCG       = NULL;
+    const UInt      uiShift      = MLS_CG_SIZE >> 1;
+    const UInt      uiNumBlkSide = nSize >> uiShift;
+    const Int       blockType    = nLog2Size;
+    UInt8 uiSigCoeffGroupFlag[MLS_GRP_NUM];
+    Int idx;
+
+    // Map zigzag to diagonal scan
+    if( nScanIdx == SCAN_ZIGZAG ) {
+        nScanIdx = SCAN_DIAG;
+    }
+
+    // CHECK_ME: I think the size of 64x64 can't be here, but the HM say that 128x128 can be here?
+    assert( nLog2Size <= 5 );
+    scan   = g_ausScanIdx[ nScanIdx ][ nLog2Size - 1 ];
+    scanCG = g_ausScanIdx[ nScanIdx ][ nLog2Size < 3 ? 0 : 1 ];
+    if( nLog2Size == 3 ) {
+      scanCG = g_sigLastScan8x8[ nScanIdx ];
+    }
+    else if( nLog2Size == 5 ) {
+      scanCG = g_sigLastScanCG32x32;
+    }
+
+    memset( uiSigCoeffGroupFlag, 0, sizeof(uiSigCoeffGroupFlag) );
+
+    // Find position of last coefficient
+    Int scanPosLast = -1;
+    Int iRealPos = -1;
+    Int posLast;
+    do {
+        posLast = scan[ ++scanPosLast ];
+
+        // get L1 sig map
+        UInt nPosY    = posLast >> nLog2Size;
+        UInt nPosX    = posLast - ( nPosY << nLog2Size );
+        UInt nBlkIdx  = uiNumBlkSide * (nPosY >> uiShift) + (nPosX >> uiShift);
+
+        iRealPos = nPosY * nStride + nPosX;
+
+        if( nSize == 8 && (nScanIdx == SCAN_HOR || nScanIdx == SCAN_VER) ) {
+            if( nScanIdx == SCAN_HOR ) {
+                nBlkIdx = nPosY >> 1;
+            }
+            else if( nScanIdx == SCAN_VER ) {
+                nBlkIdx = nPosX >> 1;
+            }
+        }
+
+        if( psCoef[iRealPos] ) {
+            uiSigCoeffGroupFlag[nBlkIdx] = 1;
+        }
+
+        uiNumSig -= ( psCoef[iRealPos] != 0 );
+    } while( uiNumSig > 0 );
+
+    // Code position of last coefficient
+    UInt posLastY = posLast >> nLog2Size;
+    UInt posLastX = posLast - ( posLastY << nLog2Size );
+    codeLastSignificantXY( pCabac, pBS, posLastX, posLastY, nSize, bIsLuma, nScanIdx );
+
+    //===== code significance flag =====
+    UInt nBaseCoeffGroupCtx = OFF_SIG_CG_FLAG_CTX + (bIsLuma ? 0 : NUM_SIG_CG_FLAG_CTX);
+    UInt nBaseCtx = OFF_SIG_FLAG_CTX + (bIsLuma ? 0 : NUM_SIG_FLAG_CTX_LUMA);
+    
+    const Int  iLastScanSet      = scanPosLast >> LOG2_SCAN_SET_SIZE;
+    UInt uiNumOne                = 0;
+    UInt uiGoRiceParam           = 0;
+    Int  iScanPosSig             = scanPosLast;
+    Int  iSubSet;
+    
+    for( iSubSet = iLastScanSet; iSubSet >= 0; iSubSet-- ) {
+        Int numNonZero = 0;
+        Int  iSubPos     = iSubSet << LOG2_SCAN_SET_SIZE;
+        uiGoRiceParam    = 0;
+        Int16 absCoeff[16];
+        UInt32 coeffSigns = 0;
+        
+        if( iScanPosSig == scanPosLast ) {
+            absCoeff[0] = abs( psCoef[iRealPos] );
+            coeffSigns  = ( psCoef[iRealPos] < 0 );
+            numNonZero  = 1;
+            iScanPosSig--;
+        }
+        
+        // encode significant_coeffgroup_flag
+        Int iCGBlkPos = scanCG[ iSubSet ];
+        Int iCGPosY   = iCGBlkPos / uiNumBlkSide;
+        Int iCGPosX   = iCGBlkPos - (iCGPosY * uiNumBlkSide);
+        if( nSize == 8 && (nScanIdx == SCAN_HOR || nScanIdx == SCAN_VER) ) {
+            iCGPosY = (nScanIdx == SCAN_HOR ? iCGBlkPos : 0);
+            iCGPosX = (nScanIdx == SCAN_VER ? iCGBlkPos : 0);
+        }
+        if( iSubSet == iLastScanSet || iSubSet == 0) {
+            uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
+        }
+        else {
+            UInt nSigCoeffGroup   = (uiSigCoeffGroupFlag[ iCGBlkPos ] != 0);
+            UInt nCtxSig  = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, iCGPosX, iCGPosY, nScanIdx, nSize );
+            xCabacEncodeBin( pCabac, pBS, nSigCoeffGroup, nBaseCoeffGroupCtx + nCtxSig );
+        }
+        
+        // encode significant_coeff_flag
+        if( uiSigCoeffGroupFlag[ iCGBlkPos ] ) {
+            UInt nBlkPos, nPosY, nPosX, nSig, nCtxSig;
+            UInt nRealBlkPos;
+            for( ; iScanPosSig >= iSubPos; iScanPosSig-- ) {
+                nBlkPos     = scan[ iScanPosSig ]; 
+                nPosY       = nBlkPos >> nLog2Size;
+                nPosX       = nBlkPos - ( nPosY << nLog2Size );
+                nRealBlkPos = nPosY * nStride + nPosX;
+                nSig        = (psCoef[ nRealBlkPos ] != 0);
+                if( (iScanPosSig != iSubPos) || iSubSet == 0 || numNonZero ) {
+                    nCtxSig  = getSigCtxInc( psCoef, nPosX, nPosY, blockType, nSize, bIsLuma );
+                    xCabacEncodeBin( pCabac, pBS, nSig, nBaseCtx + nCtxSig );
+                }
+                if( nSig ) {
+                    absCoeff[numNonZero] = abs( psCoef[nRealBlkPos] );
+                    coeffSigns = (coeffSigns << 1) + ( psCoef[nRealBlkPos] < 0 );
+                    numNonZero++;
+                }
+            }
+        }
+        else {
+            iScanPosSig = iSubPos - 1;
+        }
+        
+        if( numNonZero > 0 ) {
+            UInt c1 = 1;
+            UInt uiCtxSet = (iSubSet > 0 && bIsLuma) ? 2 : 0;
+            
+            if( uiNumOne > 0 ) {
+                uiCtxSet++;
+            }
+            
+            uiNumOne       >>= 1;
+            UInt nBaseCtxMod = OFF_ONE_FLAG_CTX + 4 * uiCtxSet + ( bIsLuma ? 0 : NUM_ONE_FLAG_CTX_LUMA);
+            
+            Int numC1Flag = MIN(numNonZero, C1FLAG_NUMBER);
+            Int firstC2FlagIdx = 16;
+            for( idx = 0; idx < numC1Flag; idx++ ) {
+                UInt uiSymbol = absCoeff[ idx ] > 1;
+                xCabacEncodeBin( pCabac, pBS, uiSymbol, nBaseCtxMod + c1 );
+                if( uiSymbol ) {
+                    c1 = 0;
+                    firstC2FlagIdx = MIN(firstC2FlagIdx, idx);
+                }
+                else if( c1 != 0 ) {
+                    c1 = MIN(c1+1, 3);
+                }
+            }
+
+            if( c1 == 0 ) {
+                nBaseCtxMod = OFF_ABS_FLAG_CTX + uiCtxSet + (bIsLuma ? 0 : NUM_ABS_FLAG_CTX_LUMA);
+                if( firstC2FlagIdx != 16 ) {
+                    UInt symbol = absCoeff[ firstC2FlagIdx ] > 2;
+                    xCabacEncodeBin( pCabac, pBS, symbol, nBaseCtxMod + 0 );
+                }
+            }
+
+            xCabacEncodeBinsEP( pCabac, pBS, coeffSigns, numNonZero );
+
+            Int iFirstCoeff2 = 1;    
+            if( c1 == 0 || numNonZero > C1FLAG_NUMBER ) {
+                for( idx = 0; idx < numNonZero; idx++ ) {
+                    UInt baseLevel  = (idx < C1FLAG_NUMBER) ? (2 + iFirstCoeff2 ) : 1;
+                    
+                    if( absCoeff[ idx ] >= baseLevel ) {
+                        xWriteGoRiceExGolomb( pCabac, pBS, absCoeff[ idx ] - baseLevel, uiGoRiceParam ); 
+                    }
+                    if( absCoeff[ idx ] >= 2 ) {
+                        iFirstCoeff2 = 0;
+                        uiNumOne++;
+                    }
+                }        
+            }
+        }
+        else {
+            uiNumOne >>= 1;
+        }
+    }
+}
+
+UInt getCtxQtCbf( UInt bLuma )
+{
+    // TODO: we use one layer only
+    if( bLuma ) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+void xWriteCU( X265_t *h, UInt nDepth, UInt bLastCU )
+{
+    X265_BitStream *pBS         = &h->bs;
+    X265_Cabac     *pCabac      = &h->cabac;
+    X265_Cache     *pCache      = &h->cache;
+    UInt8          *pucMostModeY= pCache->ucMostModeY;
+    UInt8          *pCbf        = pCache->bCbf;
+    UInt            nCUWidth    = h->ucMaxCUWidth;
+    UInt            nModeY      = pCache->nBestModeY;
+    UInt            nModeYBak   = nModeY;
+
+    // Check Depth
+    if( nDepth != h->ucMaxCUDepth - 1 ) {
+        // TODO: Split CU
+        assert( 0 );
+    }
+
+    if( h->eSliceType == SLICE_I ) {
+        // codePartSize
+        // TODO: all are SIZE_2Nx2N now
+        xCabacEncodeBin( pCabac, pBS, 1, OFF_PART_SIZE_CTX );
+
+        // codeIntraDirLumaAng
+        Int iPredIdx;
+        if( nModeY == pCache->ucMostModeY[0] )
+            iPredIdx = 0;
+        else if( nModeY == pCache->ucMostModeY[1] )
+            iPredIdx = 1;
+        else if( nModeY == pCache->ucMostModeY[2] )
+            iPredIdx = 2;
+        else
+            iPredIdx = -1;
+
+        xCabacEncodeBin( pCabac, pBS, (iPredIdx != -1), OFF_INTRA_PRED_CTX );
+        if( iPredIdx != -1 ) {
+            // 0 -> 0
+            // 1 -> 10
+            // 2 -> 11
+            if( iPredIdx == 0 )
+                xCabacEncodeBinEP( pCabac, pBS, 0 );
+            else
+                xCabacEncodeBinsEP( pCabac, pBS, iPredIdx+1, 2 );
+        }
+        else {
+            // Sort MostModeY
+            UInt8 tmp;
+#define SwapMode(a, b) \
+            tmp = pCache->ucMostModeY[(a)]; \
+            pCache->ucMostModeY[(a)] = pCache->ucMostModeY[(b)]; \
+            pCache->ucMostModeY[(b)] = tmp
+
+            if( pCache->ucMostModeY[0] > pCache->ucMostModeY[1] ) {
+                SwapMode(0, 1);
+            }
+            if( pCache->ucMostModeY[0] > pCache->ucMostModeY[2] ) {
+                SwapMode(0, 2);
+            }
+            if( pCache->ucMostModeY[1] > pCache->ucMostModeY[2] ) {
+                SwapMode(1, 2);
+            }
+#undef SwapMode
+            if(nModeY > pCache->ucMostModeY[2])
+                nModeY--;
+            if(nModeY > pCache->ucMostModeY[1])
+                nModeY--;
+            if(nModeY > pCache->ucMostModeY[0])
+                nModeY--;
+            xCabacEncodeBinsEP( pCabac, pBS, nModeY, 5 );
+        }
+
+        // codeIntraDirChroma
+        UInt nModeC = pCache->nBestModeC;
+        xCabacEncodeBin( pCabac, pBS, (nModeC != 4), OFF_CHROMA_PRED_CTX );
+        // Non DM_CHROMA_IDX
+        if( nModeC < 4 ) {
+            xCabacEncodeBinsEP( pCabac, pBS, nModeC, 2 );
+        }
+
+        // TODO: codeTransformSubdivFlag
+        // Currently, we are not use TU Split.
+        assert( h->ucQuadtreeTUMaxDepthIntra == 1 );
+
+        // TODO:
+        // Currently, we always one layer and not use TU split
+        const UInt8 bFirstChromaCbf = TRUE;
+
+        // Cbf
+        xCabacEncodeBin( pCabac, pBS, pCbf[1], OFF_QT_CBF_CTX + 1*NUM_QT_CBF_CTX + getCtxQtCbf(FALSE) );
+        xCabacEncodeBin( pCabac, pBS, pCbf[2], OFF_QT_CBF_CTX + 1*NUM_QT_CBF_CTX + getCtxQtCbf(FALSE) );
+        xCabacEncodeBin( pCabac, pBS, pCbf[0], OFF_QT_CBF_CTX + 0*NUM_QT_CBF_CTX + getCtxQtCbf(TRUE ) );
+
+        // Coeff
+        if(pCbf[0]) {
+            xEncodeCoeffNxN( pCabac, pBS, pCache->psCoefY, nCUWidth,   nDepth, TRUE,  nModeYBak );
+        }
+        if(pCbf[1]) {
+            xEncodeCoeffNxN( pCabac, pBS, pCache->psCoefU, nCUWidth/2, nDepth, FALSE, 0         );
+        }
+        if(pCbf[2]) {
+            xEncodeCoeffNxN( pCabac, pBS, pCache->psCoefV, nCUWidth/2, nDepth, FALSE, 0         );
+        }
+
+        // FinishCU
+        xCabacEncodeTerminatingBit( pCabac, pBS, bLastCU );
+    }
+    else {
+        // TODO: No P-Slice now!
+        assert(0);
+    }
 }
 
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize )
 {
     const UInt32    uiWidth     = h->usWidth;
     const UInt32    uiHeight    = h->usHeight;
+    const UInt32    nMaxCuWidth = h->ucMaxCUWidth;
+    X265_Cabac     *pCabac      = &h->cabac;
     X265_BitStream *pBS         = &h->bs;
     X265_Cache     *pCache      = &h->cache;
           Int       nQP         = h->iQP;
           Int       nQPC        = g_aucChromaScale[nQP];
     const Int32     lambda      = nQP;
           UInt8    *pucMostModeY= pCache->ucMostModeY;
+          UInt8    *pCbf        = pCache->bCbf;
           UInt8    *pucPixY     = pCache->pucPixY;
           UInt8    *pucRecY     = pCache->pucRecY;
           UInt8    *pucPredY    = pCache->pucPredY;
@@ -88,13 +608,13 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
           UInt8    *pucPredC[2] = { pCache->pucPredC[0], pCache->pucPredC[1] };
           Int16    *piTmp0      = pCache->piTmp[0];
           Int16    *piTmp1      = pCache->piTmp[1];
-          Int16    *piCoefY     = pCache->piCoefY;
-          Int16    *piCoefC[2]  = { pCache->piCoefU, pCache->piCoefV };
+          Int16    *piCoefY     = pCache->psCoefY;
+          Int16    *piCoefC[2]  = { pCache->psCoefU, pCache->psCoefV };
           UInt8    *pucMostModeC= pCache->ucMostModeC;
           UInt      realModeC;
     Int x, y;
     Int i;
-    UInt32 uiSum;
+    UInt32 uiSumY, uiSumC[2];
     #ifdef CHECK_SEI
     UInt nOffsetSEI = 0;
     #endif
@@ -104,6 +624,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     h->pFrameRec = &h->refn[MAX_REF_NUM];
 
     /// Initial local
+    h->iPoc++;
     xBitStreamInit( pBS, pucOutBuf, uiBufSize );
 
     /// Write SPS Header
@@ -137,7 +658,9 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     #endif
 
     /// Write Silces Header
-    xPutBits32(pBS, 0x45010000);
+    // FIX_ME: the HM-6.1 can't decoder my IDR only stream,
+    //         they want CDR, so I do this chunk
+    xPutBits32(pBS, (h->iPoc == 0 ? 0x45010000 : 0x41010000));
     xPutBits(pBS, 0x01, 8); // temporal_id and reserved_one_5bits
     xWriteSliceHeader(h);
 
@@ -145,10 +668,11 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
     xEncCahceInit( h );
     xCabacInit( h );
     xCabacReset( &h->cabac );
-    for( y=0; y < uiHeight; y+=h->ucMaxCUWidth ) {
+    for( y=0; y < uiHeight; y+=nMaxCuWidth ) {
         h->uiCUY = y;
         xEncCahceInitLine( h );
-        for( x=0; x < uiWidth; x+=h->ucMaxCUWidth ) {
+        for( x=0; x < uiWidth; x+=nMaxCuWidth ) {
+            const UInt   bLastCU     = (y == uiHeight - nMaxCuWidth) && (x == uiWidth - nMaxCuWidth);
             const UInt   nCUSize     = h->ucMaxCUWidth;
             const UInt   nLog2CUSize = xLog2(nCUSize-1);
             UInt32 uiBestSadY, uiBestSadC;
@@ -170,7 +694,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                 int x, y;
                 for( y=0; y<nCUSize; y++ ) {
                     for( x=0; x<nCUSize; x++ ) {
-                        if ( pCache->pucPixY[y * MAX_CU_SIZE + x] != tv_orig[y * MAX_CU_SIZE + x] ) {
+                        if( pCache->pucPixY[y * MAX_CU_SIZE + x] != tv_orig[y * MAX_CU_SIZE + x] ) {
                             fprintf( stderr, "Orig Pixel Y Wrong, (%d,%d), %02X -> %02X\n", y, x, tv_orig[y * MAX_CU_SIZE + x], pCache->pucPixY[y * MAX_CU_SIZE + x] );
                             abort();
                         }
@@ -182,11 +706,11 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                 int x, y;
                 for( y=0; y<nCUSize/2; y++ ) {
                     for( x=0; x<nCUSize/2; x++ ) {
-                        if ( pCache->pucPixU[y * MAX_CU_SIZE/2 + x] != tv_origC[0][y * MAX_CU_SIZE/2 + x] ) {
+                        if( pCache->pucPixU[y * MAX_CU_SIZE/2 + x] != tv_origC[0][y * MAX_CU_SIZE/2 + x] ) {
                             fprintf( stderr, "Orig Pixel U Wrong, (%d,%d), %02X -> %02X\n", y, x, tv_origC[0][y * MAX_CU_SIZE/2 + x], pCache->pucPixY[y * MAX_CU_SIZE/2 + x] );
                             abort();
                         }
-                        if ( pCache->pucPixV[y * MAX_CU_SIZE/2 + x] != tv_origC[1][y * MAX_CU_SIZE/2 + x] ) {
+                        if( pCache->pucPixV[y * MAX_CU_SIZE/2 + x] != tv_origC[1][y * MAX_CU_SIZE/2 + x] ) {
                             fprintf( stderr, "OrigC Pixel V Wrong, (%d,%d), %02X -> %02X\n", y, x, tv_origC[1][y * MAX_CU_SIZE/2 + x], pCache->pucPixY[y * MAX_CU_SIZE/2 + x] );
                             abort();
                         }
@@ -218,7 +742,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                     int x, y;
                     for( y=0; y<nCUSize; y++ ) {
                         for( x=0; x<nCUSize; x++ ) {
-                            if ( pucPredY[y * MAX_CU_SIZE + x] != tv_pred[nMode][y * MAX_CU_SIZE + x] ) {
+                            if( pucPredY[y * MAX_CU_SIZE + x] != tv_pred[nMode][y * MAX_CU_SIZE + x] ) {
                                 fprintf( stderr, "Intra Pred Y Wrong, Mode %d at (%d,%d), %02X -> %02X\n", nMode, y, x, tv_pred[nMode][y*nCUSize+x], pCache->pucPredY[y * MAX_CU_SIZE + x] );
                                 abort();
                             }
@@ -227,9 +751,9 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                 }
                 #endif
 
-                if ( nMode == pucMostModeY[0] )
+                if( nMode == pucMostModeY[0] )
                     uiSad = 1 * lambda;
-                else if ( nMode == pucMostModeY[1] || nMode == pucMostModeY[2] )
+                else if( nMode == pucMostModeY[1] || nMode == pucMostModeY[2] )
                     uiSad = 2 * lambda;
                 else
                     uiSad = 3 * lambda;
@@ -239,20 +763,20 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                             pucPredY, MAX_CU_SIZE
                         );
 
-                if ( uiSad < uiBestSadY ) {
+                if( uiSad < uiBestSadY ) {
                     uiBestSadY = uiSad;
                     nBestModeY = nMode;
                 }
 
                 #if (CHECK_TV)
-                if ( uiSad != tv_sad[nMode] ) {
+                if( uiSad != tv_sad[nMode] ) {
                     printf( " Sad %d -> %d Failed!\n", tv_sad[nMode], uiSad );
                     abort();
                 }
                 #endif
             }
             #if (CHECK_TV)
-            if ( nBestModeY != tv_bestmode ) {
+            if( nBestModeY != tv_bestmode ) {
                 printf( " BestMode %d -> %d Failed!\n", tv_bestmode, nBestModeY );
                 abort();
             }
@@ -265,7 +789,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             pucMostModeC[3] = DC_IDX;
             pucMostModeC[4] = nBestModeY;
             for( i=0;i<4; i++ ) {
-                if ( pucMostModeC[i] == nBestModeY ) {
+                if( pucMostModeC[i] == nBestModeY ) {
                     pucMostModeC[i] = 34;
                     break;
                 }
@@ -287,12 +811,12 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                     int x, y;
                     for( y=0; y<nCUSize; y++ ) {
                         for( x=0; x<nCUSize; x++ ) {
-                            if ( pucPredC[0][y * MAX_CU_SIZE/2 + x] != tv_predC[0][nMode][y * MAX_CU_SIZE/2 + x] ) {
+                            if( pucPredC[0][y * MAX_CU_SIZE/2 + x] != tv_predC[0][nMode][y * MAX_CU_SIZE/2 + x] ) {
                                 fprintf( stderr, "Intra Pred U Wrong, Mode %d at (%d,%d), %02X -> %02X\n", nMode, y, x, tv_predC[0][nMode][y*nCUSize+x], pCache->pucPredC[0][y * MAX_CU_SIZE/2 + x] );
                                 //abort();
                                 goto _exit;
                             }
-                            if ( pucPredC[1][y * MAX_CU_SIZE/2 + x] != tv_predC[1][nMode][y * MAX_CU_SIZE/2 + x] ) {
+                            if( pucPredC[1][y * MAX_CU_SIZE/2 + x] != tv_predC[1][nMode][y * MAX_CU_SIZE/2 + x] ) {
                                 fprintf( stderr, "Intra Pred V Wrong, Mode %d at (%d,%d), %02X -> %02X\n", nMode, y, x, tv_predC[1][nMode][y*nCUSize+x], pCache->pucPredC[1][y * MAX_CU_SIZE/2 + x] );
                                 //abort();
                                 goto _exit;
@@ -312,7 +836,7 @@ _exit:;
                             pucPixC[1], MAX_CU_SIZE/2,
                             pucPredC[1], MAX_CU_SIZE/2
                         );
-                if ( uiSad < uiBestSadC ) {
+                if( uiSad < uiBestSadC ) {
                     uiBestSadC = uiSad;
                     nBestModeC = nMode;
                 }
@@ -337,7 +861,7 @@ _exit:;
                      pucPredY, MAX_CU_SIZE,
                      piTmp0, piTmp1,
                      nCUSize, nCUSize, nBestModeY );
-            uiSum = xQuant( piCoefY, piTmp0, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
+            uiSumY = xQuant( piCoefY, piTmp0, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
 
             // Cr and Cb
             xEncIntraPredChroma( h, realModeC, nCUSize >> 1 );
@@ -350,22 +874,32 @@ _exit:;
                          pucPredC[i], MAX_CU_SIZE/2,
                          piTmp0, piTmp1,
                          nCUSize/2, nCUSize/2, realModeC );
-                uiSum += xQuant( piCoefC[i], piTmp0, MAX_CU_SIZE/2, nQPC, nCUSize/2, nCUSize/2, SLICE_I );
+                uiSumC[i] = xQuant( piCoefC[i], piTmp0, MAX_CU_SIZE/2, nQPC, nCUSize/2, nCUSize/2, SLICE_I );
             }
+            pCbf[0] = (uiSumY    != 0);
+            pCbf[1] = (uiSumC[0] != 0);
+            pCbf[2] = (uiSumC[1] != 0);
 
             // Stage 3b: Decode CU
-            if ( uiSum ) {
+            if( uiSumY ) {
                 xDeQuant( piTmp0, piCoefY, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
                 xIDctAdd( pucRecY,
                           piTmp0,
                           pucPredY, MAX_CU_SIZE,
                           piTmp1, piTmp0,
                           nCUSize, nCUSize, nBestModeY );
-                // Cr and Cb
-                for( i=0; i<2; i++ ) {
-                    #if (CHECK_TV)
-                    tv_nIdxC = i;
-                    #endif
+            }
+            else {
+                for( i=0; i<nCUSize; i++ ) {
+                    memcpy( &pucRecY[i*MAX_CU_SIZE], &pucPredY[i*MAX_CU_SIZE], nCUSize );
+                }
+            }
+            // Cr and Cb
+            for( i=0; i<2; i++ ) {
+                #if (CHECK_TV)
+                tv_nIdxC = i;
+                #endif
+                if( uiSumC[i] ) {
                     xDeQuant( piTmp0, piCoefC[i], MAX_CU_SIZE/2, nQPC, nCUSize/2, nCUSize/2, SLICE_I );
                     xIDctAdd( pucRecC[i],
                               piTmp0,
@@ -373,15 +907,16 @@ _exit:;
                               piTmp1, piTmp0,
                               nCUSize/2, nCUSize/2, realModeC );
                 }
-            }
-            else {
-                for( i=0; i<nCUSize; i++ ) {
-                    memcpy( &pucRecY[i*MAX_CU_SIZE], &pucPredY[i*MAX_CU_SIZE], nCUSize );
+                else {
+                    int k;
+                    for( k=0; k<nCUSize/2; k++ ) {
+                        memcpy( &pucRecC[i][k*MAX_CU_SIZE/2], &pucPredC[i][k*MAX_CU_SIZE/2], nCUSize/2 );
+                    }
                 }
             }
 
             // Stage 4: Write CU
-            xWriteCU( h );
+            xWriteCU( h, 0, bLastCU );
 
             // Stage 5a: Update reconstr
             xEncCacheStoreCU( h, x, y );
@@ -395,6 +930,7 @@ _exit:;
             #endif
         }
     }
+    xCabacFlush( pCabac, pBS );
     xWriteSliceEnd( h );
 
     #ifdef CHECK_SEI
@@ -574,7 +1110,7 @@ UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY )
     UInt nOffsetY = uiY / MIN_CU_SIZE;
     UInt nIdx     = nOffsetY * MAX_PU_XY + nOffsetX;
 
-    if ( nOffsetX == 0 )
+    if( nOffsetX == 0 )
         nIdx += MAX_PU_XY;
 
     return nIdx - 1;
@@ -588,7 +1124,7 @@ void xPaddingRef( UInt8 *pucRef, const UInt8 bValid[5], const UInt nBlkOffset[6]
 
     // Padding from Right to Left
     for( n=0; n<nValid; n++ ) {
-        if (bValid[n])
+        if( bValid[n] )
             break;
     }
     ucPadding = pucRef[nBlkOffset[n]];
@@ -598,7 +1134,7 @@ void xPaddingRef( UInt8 *pucRef, const UInt8 bValid[5], const UInt nBlkOffset[6]
 
     // Padding from Left to Right
     for( ; n<nValid; n++ ) {
-        if (!bValid[n]) {
+        if( !bValid[n] ) {
             assert( n > 0 );
             const UInt nBlkAddr = nBlkOffset[n];
             const UInt nBlkSize = nBlkOffset[n + 1] - nBlkOffset[n];
@@ -651,7 +1187,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     memcpy( pCache->bValid, bValid, sizeof(bValid) );
 
     // Default to DC when all reference invalid
-    if ( (bT | bL | bLT | bTR | bLB) == 0 ) {
+    if( (bT | bL | bLT | bTR | bLB) == 0 ) {
         memset( pucRefY0, 0x80, nSize  * 4 + 1 );
         memset( pucRefY1, 0x80, nSize  * 4 + 1 );
         memset( pucRefU,  0x80, nSizeC * 4 + 1 );
@@ -659,7 +1195,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
     else {
         // Copy the reconst pixel when valid
-        if (bLB) {
+        if( bLB ) {
             for( i=0; i<nSize; i++ ) {
                 pucRefY0[i + nBlkOffsetY[0]] = pucLeftPixY[nSize * 2 - 1 - i];
             }
@@ -668,7 +1204,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 pucRefV[i + nBlkOffsetC[0]] = pucLeftPixV[nSizeC * 2 - 1 - i];
             }
         }
-        if (bL) {
+        if( bL ) {
             for( i=0; i<nSize; i++ ) {
                 pucRefY0[i + nBlkOffsetY[1]] = pucLeftPixY[nSize - 1 - i];
             }
@@ -677,14 +1213,14 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 pucRefV[i + nBlkOffsetC[1]] = pucLeftPixV[nSizeC - 1 - i];
             }
         }
-        if (bLT) {
+        if( bLT ) {
             UInt offsetY = ((uiX == 0 ? nSize  : uiX) / MIN_CU_SIZE) - 1;
             UInt offsetC = ((uiX == 0 ? nSizeC : uiX) / MIN_CU_SIZE) - 1;
             pucRefY0[nBlkOffsetY[2]] = pucTopLeftY[ offsetY ];
             pucRefU[nBlkOffsetC[2]] = pucTopLeftU[ offsetC ];
             pucRefV[nBlkOffsetC[2]] = pucTopLeftV[ offsetC ];
         }
-        if (bT) {
+        if( bT ) {
             for( i=0; i<nSize; i++ ) {
                 pucRefY0[i + nBlkOffsetY[3]] = pucTopPixY[i + 0 * nSize];
             }
@@ -693,7 +1229,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
                 pucRefV[i + nBlkOffsetC[3]] = pucTopPixV[i + 0 * nSizeC];
             }
         }
-        if (bTR) {
+        if( bTR ) {
             for( i=0; i<nSize; i++ ) {
                 pucRefY0[i + nBlkOffsetY[4]] = pucTopPixY[i + 1 * nSize];
             }
@@ -719,8 +1255,8 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     UInt8 ucLeftMode = bL        ? pucLeftModeY[uiX] : DC_IDX;
     UInt8 ucTopMode  = bT && uiY ? pucTopModeY [uiX] : DC_IDX;
 
-    if ( ucLeftMode == ucTopMode ) {
-        if ( ucLeftMode > 1 ) {
+    if( ucLeftMode == ucTopMode ) {
+        if( ucLeftMode > 1 ) {
             // angular modes
             pucMostModeY[0] = ucLeftMode;
             pucMostModeY[1] = ((ucLeftMode + 29) % 32) + 2;
@@ -736,7 +1272,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     else {
         pucMostModeY[0] = ucLeftMode;
         pucMostModeY[1] = ucTopMode;
-        if ( ucLeftMode && ucTopMode )
+        if( ucLeftMode && ucTopMode )
             pucMostModeY[2] = PLANAR_IDX;
         else
             pucMostModeY[2] = ( ucLeftMode + ucTopMode ) < 2 ? VER_IDX : DC_IDX;
@@ -750,7 +1286,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     for( n=0; n<2; n++ ) {
         // Check Left
         for( i=0; i<tv_size*2; i++ ) {
-            if ( pucRefY0[i] != tv_left[0][tv_size*2-i-1] ) {
+            if( pucRefY0[i] != tv_left[0][tv_size*2-i-1] ) {
                 bPassed = FALSE;
                 fprintf( stderr, "Detect Intra Reference Left[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_left[n][tv_size*2-i-1], pCache->pucPixRef[n][i] );
                 break;
@@ -758,7 +1294,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
         }
         // Check TopLeft, Top and TopRight
         for( i=0; i<tv_size*2+1; i++ ) {
-            if ( pucRefY0[tv_size*2+i] != tv_top[0][i] ) {
+            if( pucRefY0[tv_size*2+i] != tv_top[0][i] ) {
                 bPassed = FALSE;
                 fprintf( stderr, "Detect Intra Reference  Top[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_top[n][i], pCache->pucPixRef[n][tv_size*2+i] );
                 break;
@@ -767,7 +1303,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
     // Check MPM3
     for( i=0; i<3; i++ ) {
-        if ( pucMostModeY[i] != tv_mostmode[i] ) {
+        if( pucMostModeY[i] != tv_mostmode[i] ) {
             bPassed = FALSE;
             fprintf( stderr, "Detect Intra Most Mode[%d] Wrong %d -> %d\n", i, tv_mostmode[i], pCache->pucPixRef[n][i] );
             break;
@@ -775,7 +1311,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
     // Check U
     for( i=0; i<tv_size/2*4+1; i++ ) {
-        if ( pucRefU[i] != tv_refC[0][i] ) {
+        if( pucRefU[i] != tv_refC[0][i] ) {
             bPassed = FALSE;
             fprintf( stderr, "Detect Intra Reference Cr[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_refC[0][i], pCache->pucPixRefC[0][i] );
             break;
@@ -783,14 +1319,14 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     }
     // Check V
     for( i=0; i<tv_size/2*4+1; i++ ) {
-        if ( pucRefV[i] != tv_refC[1][i] ) {
+        if( pucRefV[i] != tv_refC[1][i] ) {
             bPassed = FALSE;
             fprintf( stderr, "Detect Intra Reference Cb[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_refC[1][i], pCache->pucPixRefC[1][i] );
             break;
         }
     }
 
-    if ( bPassed ) {
+    if( bPassed ) {
         //fprintf( stderr, "Intra Reference Pixel Filter Passed!\n");
     }
     else {
@@ -884,7 +1420,7 @@ void xPredIntraDc(
     }
 
     // DC Filtering ( 8.4.3.1.5 )
-    if ( bLuma ) {
+    if( bLuma ) {
         pucDst[0] = ( pucTop[0] + pucLeft[0] + 2 * pucDst[0] + 2 ) >> 2;
         for( i=1; i<nSize; i++ ) {
             pucDst[i           ] = ( pucTop [ i] + 3 * pucDst[i           ] + 2 ) >> 2;
@@ -912,15 +1448,12 @@ void xPredIntraAng(
     UInt8 *pucRefMain       = ucRefBuf + ( (nIntraPredAngle < 0) ? MAX_CU_SIZE : 0 );
     Int    x, k;
 
-    if ( nMode == 26 )
-        printf("");
-
     // (8-47) and (8-50)
     for( x=0; x<nSize+1; x++ ) {
         pucRefMain[x] = bModeHor ? pucTopLeft[-x] : pucTopLeft[x];
     }
 
-    if (nIntraPredAngle < 0) {
+    if( nIntraPredAngle < 0 ) {
         Int iSum = 128;
         // (8-48) or (8-51)
         for( x=-1; x>(nSize*nIntraPredAngle)>>5; x-- ) {
@@ -946,16 +1479,14 @@ void xPredIntraAng(
         Int iIdx  = deltaPos >> 5;  // (8-53)
         Int iFact = deltaPos & 31;  // (8-54)
         
-        if (iFact)
-        {
+        if( iFact ) {
             // Do linear filtering
             for( x=0; x<nSize; x++ ) {
                 refMainIndex           = x+iIdx+1;
                 pucDst[k*nDstStride+x] = ( ((32-iFact)*pucRefMain[refMainIndex]+iFact*pucRefMain[refMainIndex+1]+16) >> 5 );
             }
         }
-        else
-        {
+        else {
             // Just copy the integer samples
             for( x=0; x<nSize; x++) {
                 pucDst[k*nDstStride+x] = pucRefMain[iIdx+1+x];
@@ -965,7 +1496,7 @@ void xPredIntraAng(
 
     // Filter if this is IntraPredAngle zero mode
     // see 8.4.3.1.3 and 8.4.3.1.4
-    if ( bLuma && (nIntraPredAngle == 0) )
+    if( bLuma && (nIntraPredAngle == 0) )
     {
         Int offset = bModeHor ? 1 : -1;
         for( x=0; x<nSize; x++ ) {
@@ -974,7 +1505,7 @@ void xPredIntraAng(
     }
 
     // Matrix Transpose if this is the horizontal mode
-    if ( bModeHor ) {
+    if( bModeHor ) {
       UInt8 tmp;
       for (k=0;k<nSize-1;k++)
       {
@@ -996,7 +1527,7 @@ void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
     UInt8       *pucRefY    = pCache->pucPixRef[bFilter];
     UInt8       *pucDstY    = pCache->pucPredY;
 
-    if ( nMode == PLANAR_IDX ) {
+    if( nMode == PLANAR_IDX ) {
         xPredIntraPlanar(
             pucRefY,
             pucDstY,
@@ -1004,7 +1535,7 @@ void xEncIntraPredLuma( X265_t *h, UInt nMode, UInt nSize )
             nSize
         );
     }
-    else if ( nMode == DC_IDX ) {
+    else if( nMode == DC_IDX ) {
         xPredIntraDc(
             pucRefY,
             pucDstY,
@@ -1029,7 +1560,7 @@ void xEncIntraPredChroma( X265_t *h, UInt nMode, UInt nSize )
 {
     X265_Cache  *pCache     = &h->cache;
 
-    if ( nMode == PLANAR_IDX ) {
+    if( nMode == PLANAR_IDX ) {
         xPredIntraPlanar(
             pCache->pucPixRefC[0],
             pCache->pucPredC[0],
@@ -1043,7 +1574,7 @@ void xEncIntraPredChroma( X265_t *h, UInt nMode, UInt nSize )
             nSize
         );
     }
-    else if ( nMode == DC_IDX ) {
+    else if( nMode == DC_IDX ) {
         xPredIntraDc(
             pCache->pucPixRefC[0],
             pCache->pucPredC[0],

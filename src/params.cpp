@@ -44,7 +44,7 @@ void xDefaultParams(X265_t *h)
     h->ucMaxNumRefFrames            =  1;
     h->ucBitsForPOC                 =  8;
     h->ucMaxNumMergeCand            = MRG_MAX_NUM_CANDS_SIGNALED;
-    h->ucTSIG                       = 5;
+    h->ucTSIG                       =  5;
 
     // Feature
     h->bUseNewRefSetting            = FALSE;
@@ -53,7 +53,7 @@ void xDefaultParams(X265_t *h)
     h->bMRG                         = FALSE;
     h->bLoopFilterDisable           = TRUE;
     h->bSignHideFlag                = FALSE;
-    h->bEnableTMVPFlag              = FALSE;
+    h->bEnableTMVPFlag              = TRUE;
 }
 
 int confirmPara(int bflag, const char* message)
