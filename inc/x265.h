@@ -327,4 +327,41 @@ extern UInt32 tv_sadC;
 int tInitTv( const char *fname );
 void tGetVector( );
 
+
+// ***************************************************************************
+// * Macro for build platform information
+// ***************************************************************************
+#ifdef __GNUC__
+#define X265_COMPILEDBY "[GCC %d.%d.%d]", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__
+#ifdef __IA64__
+#define X265_ONARCH     "[on 64-bit] "
+#else
+#define X265_ONARCH     "[on 32-bit] "
+#endif
+#endif
+
+#ifdef __INTEL_COMPILER
+#define X265_COMPILEDBY "[ICC %d]", __INTEL_COMPILER
+#elif  _MSC_VER
+#define X265_COMPILEDBY "[VS %d]", _MSC_VER
+#endif
+
+#ifndef X265_COMPILEDBY
+#define X265_COMPILEDBY "[Unk-CXX]"
+#endif
+
+#ifdef _WIN32
+#define X265_ONOS       "[Windows]"
+#elif  __linux
+#define X265_ONOS       "[Linux]"
+#elif  __CYGWIN__
+#define X265_ONOS       "[Cygwin]"
+#elif __APPLE__
+#define X265_ONOS       "[Mac OS X]"
+#else
+#define X265_ONOS       "[Unk-OS]"
+#endif
+
+#define X265_BITS       "[%d bit]", (sizeof(void*) == 8 ? 64 : 32) ///< used for checking 64-bit O/S
+
 #endif /* __X265_H__ */
