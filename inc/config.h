@@ -115,8 +115,13 @@ typedef unsigned short      UInt16;
 typedef          short       Int16;
 typedef unsigned int        UInt32;
 typedef          int         Int32;
+#ifdef _MSC_VER
 typedef unsigned __int64    UInt64;
 typedef          __int64     Int64;
+#else
+typedef unsigned long long  UInt64;
+typedef          long long   Int64;
+#endif
 
 // Fast integer depends on platform
 typedef Int32    Int;

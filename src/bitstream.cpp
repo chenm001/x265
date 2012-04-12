@@ -112,7 +112,7 @@ static void xWriteShortTermRefPicSet( X265_t *h )
 void xWriteSPS( X265_t *h )
 {
     X265_BitStream *pBS = &h->bs;
-    int i;
+    UInt i;
 #if ENC_DEC_TRACE
     xTraceSPSHeader();
 #endif
@@ -338,7 +338,7 @@ Int32 xPutRBSP(UInt8 *pucDst, UInt8 *pucSrc, UInt32 uiLength)
     assert( uiLength > 2 );
 
     UInt8 *pucDst0 = pucDst;
-    int i;
+    UInt i;
     *pucDst++ = *pucSrc++;
     *pucDst++ = *pucSrc++;
 
@@ -555,7 +555,7 @@ INIT_TRANS_SUBDIV_FLAG[3][NUM_TRANS_SUBDIV_FLAG_CTX] = {
 // ***************************************************************************
 void xCabacInitEntry( UInt n, const Int qp, UInt8 *pucState, const UInt8 *pInitValue )
 {
-    Int i;
+    UInt i;
     assert( (qp >= 0) && (qp <= 51) );
 
     for( i=0; i<n; i++ ) {
