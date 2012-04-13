@@ -163,7 +163,7 @@ void xWriteSPS( X265_t *h )
     WRITE_UVLC( h->ucQuadtreeTUMaxDepthInter - 1,                                     "max_transform_hierarchy_depth_inter" );
     WRITE_UVLC( h->ucQuadtreeTUMaxDepthIntra - 1,                                     "max_transform_hierarchy_depth_intra" );
     WRITE_FLAG( 0,                                                                    "scaling_list_enabled_flag" ); 
-    WRITE_FLAG( 0,                                                                    "chroma_pred_from_luma_enabled_flag" );
+    WRITE_FLAG( h->bUseLMChroma,                                                      "chroma_pred_from_luma_enabled_flag" );
     WRITE_FLAG( 0,                                                                    "deblocking_filter_in_aps_enabled_flag");
     WRITE_FLAG( 1,                                                                    "seq_loop_filter_across_slices_enabled_flag");
     WRITE_FLAG( 1,                                                                    "asymmetric_motion_partitions_enabled_flag" );

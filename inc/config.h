@@ -40,10 +40,12 @@
 #define MAX_PART_NUM                        (MAX_PU_XY * MAX_PU_XY)
 
 #define NUM_INTRA_MODE                      (36)
+#define NUM_CHROMA_MODE                     ( 6)    // total number of chroma modes
 #define PLANAR_IDX                          ( 0)
 #define VER_IDX                             (26)    // index for intra VERTICAL   mode
 #define HOR_IDX                             (10)    // index for intra HORIZONTAL mode
 #define DC_IDX                              ( 1)
+#define LM_CHROMA_IDX                       (35)    // chroma mode index for derived from luma intra mode
 #define DM_CHROMA_IDX                       (36)    // chroma mode index for derived from luma intra mode
 #define SHIFT_INV_1ST                       ( 7)    // Shift after first inverse transform stage
 #define SHIFT_INV_2ND                       (12)    // Shift after second inverse transform stage

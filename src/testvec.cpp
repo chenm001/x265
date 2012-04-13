@@ -45,20 +45,22 @@ UInt32 tv_sad[35];
 
 // Chroma
 UInt8 tv_refC[2][MAX_CU_SIZE/2*4+1];
-UInt8 tv_predC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+UInt8 tv_refLM[2*MAX_CU_SIZE/2];
+UInt8 tv_predC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
 UInt8 tv_origC[2][MAX_CU_SIZE*MAX_CU_SIZE/4];
-Int16 tv_resiC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-Int16 tv_transC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-Int16 tv_quantC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-Int16 tv_iquantC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-Int16 tv_itransC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-UInt8  tv_recC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-UInt32 tv_mostmodeC[5];
+Int16 tv_resiC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+Int16 tv_transC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+Int16 tv_quantC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+Int16 tv_iquantC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+Int16 tv_itransC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+UInt8  tv_recC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+UInt32 tv_mostmodeC[NUM_CHROMA_MODE];
 UInt32 tv_dmMode;
 UInt32 tv_bestmodeC;
 UInt32 tv_nModeC;
 UInt32 tv_nIdxC;
-UInt32 tv_sadC;
+UInt32 tv_BestSadC;
+UInt32 tv_sadC[2][NUM_CHROMA_MODE];
 
 static FILE *fp_tv = NULL;
 
@@ -136,6 +138,7 @@ void tGetVector( )
     memset( tv_top,         0xCD, sizeof(tv_top)     );
     memset( tv_left,        0xCD, sizeof(tv_left)    );
     memset( tv_refC,        0xCD, sizeof(tv_refC)    );
+    memset( tv_refLM,       0xCD, sizeof(tv_refLM)   );
     memset( tv_pred,        0xCD, sizeof(tv_pred)    );
     memset( tv_predC,       0xCD, sizeof(tv_predC)   );
     memset( tv_orig,        0xCD, sizeof(tv_orig)    );
@@ -182,7 +185,7 @@ void tGetVector( )
     tv_left[0][1] = dummy0;
     tReadLine8( buf+3, tv_top[1], 2*tv_size+1 );
 
-    for( i=0; i<2*tv_size-2; i++ ) {
+    for( i=0; i<2*(int)tv_size-2; i++ ) {
         fgets( buf, sizeof(buf), fp_tv );
         sscanf( buf, "%02X    %02X", &dummy0, &dummy1 );
         tv_left[0][2+i] = dummy0;
@@ -252,7 +255,7 @@ void tGetVector( )
 
     // Read MostModeC
     fgets( buf, sizeof(buf), fp_tv );
-    sscanf( buf, "@@@ ChromaMode=(%d,%d,%d,%d,%d)", &tv_mostmodeC[0], &tv_mostmodeC[1], &tv_mostmodeC[2], &tv_mostmodeC[3], &tv_mostmodeC[4] );
+    sscanf( buf, "@@@ ChromaMode=(%d,%d,%d,%d,%d,%d)", &tv_mostmodeC[0], &tv_mostmodeC[1], &tv_mostmodeC[2], &tv_mostmodeC[3], &tv_mostmodeC[4], &tv_mostmodeC[5] );
 
     // Read origU
     fgets( buf, sizeof(buf), fp_tv );
@@ -263,11 +266,11 @@ void tGetVector( )
     tReadMatrix8( fp_tv, tv_origC[1], tv_sizeC, MAX_CU_SIZE/2 );
 
     // Read Current ModeC and Data
-    for( i=0; i<5; i++ ) {
+    for( i=0; i<NUM_CHROMA_MODE; i++ ) {
         // read ModeC
         fgets( buf, sizeof(buf), fp_tv );
         sscanf( buf, "    ChrMode=%d", &dummy0 );
-        if ( i != 4 )
+        if ( i != (NUM_CHROMA_MODE-1) )
             assert( dummy0 == tv_mostmodeC[i] );
         else
             tv_dmMode = dummy0;
@@ -279,6 +282,16 @@ void tGetVector( )
                 assert( strstr(buf, "]") != NULL );
                 tReadLine8( buf + strlen("    Reference[0]=["), tv_refC[j], tv_sizeC * 4 + 1 );
             }
+            if ( (i == NUM_CHROMA_MODE-2) && (j == 0) ) {
+                // Read ReferenceLM
+                fgets( buf, sizeof(buf), fp_tv );
+                assert( strstr(buf, "]") != NULL );
+                tReadLine8( buf + strlen("    ReferenceLM=["), tv_refLM, tv_sizeC * 2 );
+            }
+
+            // Read Sad
+            fgets( buf, sizeof(buf), fp_tv );
+            sscanf( buf, "    Sad=%d", &tv_sadC[j][i] );
 
             // Read Pred
             fgets( buf, sizeof(buf), fp_tv );
@@ -316,7 +329,7 @@ void tGetVector( )
 
     // Read bestModeC and SadC
     fgets( buf, sizeof(buf), fp_tv );
-    sscanf( buf, "@@@ BestChromaMode=%d, Sad=%d", &tv_bestmodeC, &tv_sadC );
+    sscanf( buf, "@@@ BestChromaMode=%d, Sad=%d", &tv_bestmodeC, &tv_BestSadC );
 }
 
 #endif

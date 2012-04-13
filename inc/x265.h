@@ -81,16 +81,26 @@ typedef enum {
     SCAN_DIAG   = 3     ///< up-right diagonal scan
 } eScanType;
 
+typedef enum {
+    VALID_LB    = 0,
+    VALID_L     = 1,
+    VALID_LT    = 2,
+    VALID_T     = 3,
+    VALID_TR    = 4,
+} eValidIdx;
+
 typedef struct X265_Cache {
     /// context
     UInt32  uiOffset;
     UInt8   pucTopPixY[MAX_WIDTH    ];
     UInt8   pucTopPixU[MAX_WIDTH / 2];
     UInt8   pucTopPixV[MAX_WIDTH / 2];
+    UInt8   pucTopPixM[MAX_WIDTH / 2];
     UInt8   pucTopModeY[MAX_WIDTH / MIN_CU_SIZE   ];
     UInt8   pucLeftPixY[MAX_CU_SIZE    ];
     UInt8   pucLeftPixU[MAX_CU_SIZE / 2];
     UInt8   pucLeftPixV[MAX_CU_SIZE / 2];
+    UInt8   pucLeftPixM[MAX_CU_SIZE / 2];
     UInt8   pucLeftModeY[(MAX_CU_SIZE + MAX_CU_SIZE)    ];
     UInt8   pucTopLeftY[MAX_PU_XY    ];
     UInt8   pucTopLeftU[MAX_PU_XY / 4];
@@ -108,9 +118,9 @@ typedef struct X265_Cache {
 
     /// IntraPred buffer
     UInt8   pucPixRef[2][4*MAX_CU_SIZE+1];          //< 0:ReconPixel, 1:Filtered
-    UInt8   pucPixRefC[2][4*MAX_CU_SIZE/2+1];          //< 0:ReconPixel, 1:Filtered
+    UInt8   pucPixRefC[2][4*MAX_CU_SIZE/2+1];       //< 0:ReconPixel, 1:Filtered
     UInt8   pucPredY[MAX_CU_SIZE * MAX_CU_SIZE];
-    UInt8   pucPredC[2][MAX_CU_SIZE * MAX_CU_SIZE/4];
+    UInt8   pucPredC[3][MAX_CU_SIZE * MAX_CU_SIZE/4];   // 0:U, 1:V, 2:LM
     UInt8   ucMostModeY[3];
     UInt8   ucMostModeC[5];
     UInt8   bValid[5];
@@ -269,7 +279,7 @@ void xEncInit( X265_t *h );
 void xEncFree( X265_t *h );
 Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufSize );
 void xEncCahceInit( X265_t *h );
-void xEncCahceInitLine( X265_t *h );
+void xEncCahceInitLine( X265_t *h, UInt y );
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY );
 void xEncCacheStoreCU( X265_t *h, UInt uiX, UInt uiY );
 void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeight );
@@ -295,6 +305,7 @@ void xDeQuant( Int16 *pDst, Int16 *pSrc, UInt nStride, UInt nQP, Int iWidth, Int
 // * TestVec.cpp
 // ***************************************************************************
 extern UInt32 tv_size;
+extern UInt32 tv_sizeC;
 extern UInt8  tv_top[2][MAX_CU_SIZE*2+1];
 extern UInt8  tv_left[2][MAX_CU_SIZE*2];
 extern UInt8  tv_pred[35][MAX_CU_SIZE*MAX_CU_SIZE];
@@ -309,21 +320,23 @@ extern UInt8  tv_rec[MAX_CU_SIZE*MAX_CU_SIZE];
 extern UInt32 tv_mostmode[3];
 extern UInt32 tv_bestmode;
 extern UInt32 tv_sad[35];
+extern UInt8 tv_refLM[2*MAX_CU_SIZE/2];
 extern UInt8 tv_refC[2][MAX_CU_SIZE/2*4+1];
-extern UInt8 tv_predC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern UInt8 tv_predC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
 extern UInt8 tv_origC[2][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern Int16 tv_resiC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern Int16 tv_transC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern Int16 tv_quantC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern Int16 tv_iquantC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern Int16 tv_itransC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern UInt8  tv_recC[2][5][MAX_CU_SIZE*MAX_CU_SIZE/4];
-extern UInt32 tv_mostmodeC[5];
+extern Int16 tv_resiC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_transC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_quantC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_iquantC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern Int16 tv_itransC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern UInt8  tv_recC[2][NUM_CHROMA_MODE][MAX_CU_SIZE*MAX_CU_SIZE/4];
+extern UInt32 tv_mostmodeC[NUM_CHROMA_MODE];
 extern UInt32 tv_dmMode;
 extern UInt32 tv_bestmodeC;
 extern UInt32 tv_nModeC;
 extern UInt32 tv_nIdxC;
-extern UInt32 tv_sadC;
+extern UInt32 tv_BestSadC;
+extern UInt32 tv_sadC[2][NUM_CHROMA_MODE];
 int tInitTv( const char *fname );
 void tGetVector( );
 
