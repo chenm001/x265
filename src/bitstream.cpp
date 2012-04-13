@@ -578,7 +578,6 @@ void xCabacInit( X265_t *h )
     const Int           iQp     = h->iQP;
           UInt8        *pucState= pCabac->contextModels;
           UInt          nOffset = 0;
-          Int           i;
 
 #define INIT_CABAC( n, m, v ) \
     xCabacInitEntry( (m)*(n), iQp, pucState, (v)[nSlice] ); \

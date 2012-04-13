@@ -67,7 +67,7 @@ void xEncFree( X265_t *h )
 UInt32 countNonZeroCoeffs( Int16 *psCoef, UInt nStride, UInt nSize )
 {
     Int count = 0;
-    Int x, y;
+    UInt x, y;
 
     for( y=0; y<nSize; y++ ) {
         for( x=0; x<nSize; x++ ) {
@@ -120,7 +120,7 @@ Int getSigCtxInc(Int16 *psCoeff, Int posX, Int posY, Int blockType, Int nSize, U
 {
     const Int width  = nSize;
     const Int height = nSize;
-    const UInt nStride = (MAX_CU_SIZE >> !bIsLuma);
+    const UInt nStride = (MAX_CU_SIZE >> (bIsLuma ? 0 : 1));
 
     if( blockType == 2 ) {
         //LUMA map
@@ -229,7 +229,6 @@ UInt getSigCoeffGroupCtxInc(const UInt8 *uiSigCoeffGroupFlag, const UInt nCGPosX
 void codeLastSignificantXY( X265_Cabac *pCabac, X265_BitStream *pBS, UInt nPosX, UInt nPosY, UInt nSize, UInt8 bIsLuma, UInt nScanIdx )
 {
     const UInt nLog2Size = xLog2( nSize - 1 );
-    int i;
 
     // swap
     if( nScanIdx == SCAN_VER ) {
@@ -278,7 +277,7 @@ void codeLastSignificantXY( X265_Cabac *pCabac, X265_BitStream *pBS, UInt nPosX,
 
 void xEncodeCoeffNxN( X265_Cabac *pCabac, X265_BitStream *pBS, Int16 *psCoef, UInt nSize, UInt nDepth, UInt8 bIsLuma, UInt nLumaMode )
 {
-    const UInt      nStride      = (MAX_CU_SIZE >> !bIsLuma);
+    const UInt      nStride      = (MAX_CU_SIZE >> (bIsLuma ? 0 : 1));
           UInt      nLog2Size    = xLog2( nSize - 1 );
           UInt32    uiNumSig     = countNonZeroCoeffs( psCoef, nStride, nSize );
           UInt      nScanIdx     = getCoefScanIdx( nSize, TRUE, bIsLuma, nLumaMode );
@@ -447,7 +446,7 @@ void xEncodeCoeffNxN( X265_Cabac *pCabac, X265_BitStream *pBS, Int16 *psCoef, UI
             Int iFirstCoeff2 = 1;    
             if( c1 == 0 || numNonZero > C1FLAG_NUMBER ) {
                 for( idx = 0; idx < numNonZero; idx++ ) {
-                    UInt baseLevel  = (idx < C1FLAG_NUMBER) ? (2 + iFirstCoeff2 ) : 1;
+                    Int baseLevel = (idx < C1FLAG_NUMBER) ? (2 + iFirstCoeff2 ) : 1;
                     
                     if( absCoeff[ idx ] >= baseLevel ) {
                         xWriteGoRiceExGolomb( pCabac, pBS, absCoeff[ idx ] - baseLevel, uiGoRiceParam ); 
@@ -488,7 +487,7 @@ void xWriteCU( X265_t *h, UInt nDepth, UInt bLastCU )
     UInt            nModeYBak   = nModeY;
 
     // Check Depth
-    if( nDepth != h->ucMaxCUDepth - 1 ) {
+    if( nDepth != (UInt)h->ucMaxCUDepth - 1 ) {
         // TODO: Split CU
         assert( 0 );
     }
@@ -612,8 +611,8 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
           Int16    *piCoefC[2]  = { pCache->psCoefU, pCache->psCoefV };
           UInt8    *pucMostModeC= pCache->ucMostModeC;
           UInt      realModeC;
-    Int x, y;
-    Int i;
+    UInt x, y;
+    UInt i;
     UInt32 uiSumY, uiSumC[2];
     #ifdef CHECK_SEI
     UInt nOffsetSEI = 0;
@@ -691,7 +690,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             #if (CHECK_TV)
             // Check Y
             {
-                int x, y;
+                UInt x, y;
                 for( y=0; y<nCUSize; y++ ) {
                     for( x=0; x<nCUSize; x++ ) {
                         if( pCache->pucPixY[y * MAX_CU_SIZE + x] != tv_orig[y * MAX_CU_SIZE + x] ) {
@@ -703,7 +702,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             }
             // Check U and V
             {
-                int x, y;
+                UInt x, y;
                 for( y=0; y<nCUSize/2; y++ ) {
                     for( x=0; x<nCUSize/2; x++ ) {
                         if( pCache->pucPixU[y * MAX_CU_SIZE/2 + x] != tv_origC[0][y * MAX_CU_SIZE/2 + x] ) {
@@ -739,7 +738,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 
                 #if (CHECK_TV)
                 {
-                    int x, y;
+                    UInt x, y;
                     for( y=0; y<nCUSize; y++ ) {
                         for( x=0; x<nCUSize; x++ ) {
                             if( pucPredY[y * MAX_CU_SIZE + x] != tv_pred[nMode][y * MAX_CU_SIZE + x] ) {
@@ -808,7 +807,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
 
                 #if (CHECK_TV)
                 {
-                    int x, y;
+                    UInt x, y;
                     for( y=0; y<nCUSize; y++ ) {
                         for( x=0; x<nCUSize; x++ ) {
                             if( pucPredC[0][y * MAX_CU_SIZE/2 + x] != tv_predC[0][nMode][y * MAX_CU_SIZE/2 + x] ) {
@@ -908,7 +907,7 @@ _exit:;
                               nCUSize/2, nCUSize/2, realModeC );
                 }
                 else {
-                    int k;
+                    UInt k;
                     for( k=0; k<nCUSize/2; k++ ) {
                         memcpy( &pucRecC[i][k*MAX_CU_SIZE/2], &pucPredC[i][k*MAX_CU_SIZE/2], nCUSize/2 );
                     }
@@ -1069,7 +1068,7 @@ void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeig
     const UInt8 *pucRecV        =  pCache->pucRecV;
     const UInt8 nBestModeY      =  pCache->nBestModeY;
 
-    Int x, y;
+    UInt x, y;
 
     // Update TopLeft
     for( x=0; x<nWidth; x+=MIN_CU_SIZE ) {
@@ -1118,7 +1117,7 @@ UInt xGetTopLeftIndex( UInt32 uiX, UInt32 uiY )
 
 void xPaddingRef( UInt8 *pucRef, const UInt8 bValid[5], const UInt nBlkOffset[6] )
 {
-    Int     i, n;
+    UInt    i, n;
     UInt8   ucPadding;
     const Int nValid = 5;
 
@@ -1178,7 +1177,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     const UInt8  bValid[5]      = {bLB, bL, bLT, bT, bTR};
     const UInt   nBlkOffsetY[6] = {0, nSize,  2*nSize,  2*nSize +1, 3*nSize +1, 4*nSize +1};
     const UInt   nBlkOffsetC[6] = {0, nSizeC, 2*nSizeC, 2*nSizeC+1, 3*nSizeC+1, 4*nSizeC+1};
-    Int i, n;
+    UInt i, n;
 
     // TODO: I ASSUME( CU = PU = TU ) here, do more!
     assert( (uiX == 0) && (uiY == 0) && (nSize == h->ucMaxCUWidth) );
@@ -1355,15 +1354,15 @@ void xPredIntraPlanar(
     UInt shift2D = shift1D + 1;
 
     // Get left and above reference column and row
-    for( i=0; i<nSize+1; i++) {
+    for( i=0; i<(Int)nSize+1; i++) {
         topRow[i]     = pucTop[i];
         leftColumn[i] = pucLeft[-i];
     }
 
     // Prepare intermediate variables used in interpolation
-    bottomLeft = leftColumn[nSize];
-    topRight   = topRow[nSize];
-    for( i=0; i<nSize; i++ ) {
+    bottomLeft = pucLeft[-(Int)nSize];
+    topRight   = pucTop[nSize];
+    for( i=0; i<(Int)nSize; i++ ) {
         bottomRow[i]   = bottomLeft - topRow[i];
         rightColumn[i] = topRight   - leftColumn[i];
         topRow[i]      <<= shift1D;
@@ -1371,9 +1370,9 @@ void xPredIntraPlanar(
     }
 
     // Generate prediction signal
-    for( i=0; i<nSize; i++ ) {
+    for( i=0; i<(Int)nSize; i++ ) {
         horPred = leftColumn[i] + offset2D;
-        for( j=0; j<nSize; j++ ) {
+        for( j=0; j<(Int)nSize; j++ ) {
             horPred += rightColumn[i];
             topRow[j] += bottomRow[j];
             pucDst[i*nDstStride+j] = ( (horPred + topRow[j]) >> shift2D );
@@ -1393,7 +1392,7 @@ UInt8 xPredIntraGetDCVal(
     UInt8 ucDcVal;
     int i;
 
-    for( i=0; i<nSize; i++ ) {
+    for( i=0; i<(Int)nSize; i++ ) {
         uiSumTop  += pucTop [ i];
         uiSumLeft += pucLeft[-i];
     }
@@ -1415,14 +1414,14 @@ void xPredIntraDc(
     int i;
 
     // Fill DC Val
-    for( i=0; i<nSize; i++ ) {
+    for( i=0; i<(Int)nSize; i++ ) {
         memset( &pucDst[i * nDstStride], ucDcVal, nSize );
     }
 
     // DC Filtering ( 8.4.3.1.5 )
     if( bLuma ) {
         pucDst[0] = ( pucTop[0] + pucLeft[0] + 2 * pucDst[0] + 2 ) >> 2;
-        for( i=1; i<nSize; i++ ) {
+        for( i=1; i<(Int)nSize; i++ ) {
             pucDst[i           ] = ( pucTop [ i] + 3 * pucDst[i           ] + 2 ) >> 2;
             pucDst[i*nDstStride] = ( pucLeft[-i] + 3 * pucDst[i*nDstStride] + 2 ) >> 2;
         }
