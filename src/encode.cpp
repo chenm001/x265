@@ -83,11 +83,12 @@ UInt getCoefScanIdx( UInt nWidth, UInt8 bIsIntra, UInt8 bIsLuma, UInt nLumaMode 
     UInt uiCTXIdx;
     UInt nScanIdx;
     UInt uiDirMode;
-    
+    UInt nOff = bIsLuma ? 0 : 1;
+
     if( !bIsIntra ) {
         return SCAN_ZIGZAG;
     }
-    
+
     switch( nWidth ) {
     case  2: uiCTXIdx = 6; break;
     case  4: uiCTXIdx = 5; break;
@@ -97,20 +98,11 @@ UInt getCoefScanIdx( UInt nWidth, UInt8 bIsIntra, UInt8 bIsLuma, UInt nLumaMode 
     case 64: uiCTXIdx = 1; break;
     default: uiCTXIdx = 0; break;
     }
-    
-    if( bIsLuma ) {
-        nScanIdx = SCAN_ZIGZAG;
-        if( uiCTXIdx > 3 && uiCTXIdx < 6 ) {
-            //if multiple scans supported for PU size
-            nScanIdx = abs((Int) nLumaMode - VER_IDX) < 5 ? 1 : (abs((Int)nLumaMode - HOR_IDX) < 5 ? 2 : 0);
-        }
-    }
-    else {
-        nScanIdx = SCAN_ZIGZAG;
-        if( uiCTXIdx > 4 && uiCTXIdx < 7 ) {
-            //if multiple scans supported for PU size
-            nScanIdx = abs((Int) nLumaMode - VER_IDX) < 5 ? 1 : (abs((Int)nLumaMode - HOR_IDX) < 5 ? 2 : 0);
-        }
+
+    nScanIdx = SCAN_ZIGZAG;
+    if( uiCTXIdx > 3+nOff && uiCTXIdx < 6+nOff ) {
+        //if multiple scans supported for PU size
+        nScanIdx = abs((Int) nLumaMode - VER_IDX) < 5 ? 1 : (abs((Int)nLumaMode - HOR_IDX) < 5 ? 2 : 0);
     }
 
     return nScanIdx;
