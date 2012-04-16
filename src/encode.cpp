@@ -1007,13 +1007,16 @@ _exit:;
     MD5Final( &ctx, &pucOutBuf[nOffsetSEI] );
     #endif
 
-    #if 0
+    #ifdef WRITE_REC
     // Save Restruct
     {
-        FILE *fpx=fopen("OX.YUV", "wb");
+        static FILE *fpx=NULL;
+        if ( fpx == NULL )
+            fpx = fopen("OX.YUV", "wb");
         assert( fpx != NULL );
         fwrite(h->pFrameRec->pucY, 1, uiWidth*uiHeight*3/2, fpx);
-        fclose(fpx);
+        fflush(fpx);
+        //fclose(fpx);
     }
     #endif
 
