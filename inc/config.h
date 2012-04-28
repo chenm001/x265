@@ -115,8 +115,15 @@ typedef unsigned char       UInt8;
 typedef   signed char        Int8;
 typedef unsigned short      UInt16;
 typedef          short       Int16;
+
+#ifndef ARCH_X64
 typedef unsigned int        UInt32;
 typedef          int         Int32;
+#else
+typedef unsigned long       UInt32;
+typedef          long        Int32;
+#endif
+
 #ifdef _MSC_VER
 typedef unsigned __int64    UInt64;
 typedef          __int64     Int64;
