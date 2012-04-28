@@ -1177,11 +1177,10 @@ void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeig
     }
     // Calculate LMChroma Reference Top
     for( x=0; x<nWidth/2; x++ ) {
-        UInt32 T0 = pucTopPixY[ (x*2-1) ];
+        intptr_t nPrevIdx = ( x == 0 && !bL ) ? 0 : (x*2-1);
+        UInt32 T0 = pucTopPixY[ nPrevIdx ];
         UInt32 T1 = pucTopPixY[ (x*2  ) ];
         UInt32 T2 = pucTopPixY[ (x*2+1) ];
-        if ( x == 0 && !bL )
-            T0 = T1;
         pucTopPixM[x] = (UInt8)( (T0 + 2*T1 + T2 + 2) >> 2 );
     }
     // Extend invalid Top pixel by Left for next CU

@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <assert.h>
 
 #include "config.h"
@@ -95,7 +96,7 @@ typedef struct X265_Cache {
     UInt8   pucTopPixY[MAX_WIDTH    ];
     UInt8   pucTopPixU[MAX_WIDTH / 2];
     UInt8   pucTopPixV[MAX_WIDTH / 2];
-    UInt8   pucTopPixM[MAX_WIDTH / 2];
+    UInt8   pucTopPixM[MAX_WIDTH / 2+1];
     UInt8   pucTopModeY[MAX_WIDTH / MIN_CU_SIZE   ];
     UInt8   pucLeftPixY[MAX_CU_SIZE    ];
     UInt8   pucLeftPixU[MAX_CU_SIZE / 2];
