@@ -1323,7 +1323,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     for( i=0; i<tv_size/2*4+1; i++ ) {
         if( pucRefU[i] != tv_refC[0][i] ) {
             bPassed = FALSE;
-            fprintf( stderr, "Detect Intra Reference Cr[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_refC[0][i], pCache->pucPixRefC[0][i] );
+            fprintf( stderr, "Detect Intra Reference Cr Wrong at %d, %02X -> %02X\n", i, tv_refC[0][i], pCache->pucPixRefC[0][i] );
             break;
         }
     }
@@ -1331,7 +1331,7 @@ void xEncIntraLoadRef( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nSize )
     for( i=0; i<tv_size/2*4+1; i++ ) {
         if( pucRefV[i] != tv_refC[1][i] ) {
             bPassed = FALSE;
-            fprintf( stderr, "Detect Intra Reference Cb[%d] Wrong at %d, %02X -> %02X\n", n, i, tv_refC[1][i], pCache->pucPixRefC[1][i] );
+            fprintf( stderr, "Detect Intra Reference Cb Wrong at %d, %02X -> %02X\n", i, tv_refC[1][i], pCache->pucPixRefC[1][i] );
             break;
         }
     }
