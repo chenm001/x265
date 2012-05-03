@@ -268,6 +268,10 @@ void tGetVector( )
 
     // Read Current ModeC and Data
     for( i=0; i<NUM_CHROMA_MODE; i++ ) {
+        // skip LM_Chroma
+        if ( i == NUM_CHROMA_MODE-2 )
+            continue;
+
         // read ModeC
         fgets( buf, sizeof(buf), fp_tv );
         sscanf( buf, "    ChrMode=%d", &dummy0 );
