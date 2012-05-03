@@ -230,8 +230,10 @@ void xWritePPS( X265_t *h )
 #if !H0566_TLA
 #error Please Sync Code
 #endif
-    // num_ref_idx_l0_default_active_minus1
-    // num_ref_idx_l1_default_active_minus1
+
+    WRITE_CODE( h->ucMaxNumRefFrames - 1, 3,                "num_ref_idx_l0_default_active_minus1");
+    WRITE_CODE( 0, 3,                                       "num_ref_idx_l1_default_active_minus1");
+
     WRITE_SVLC( 0/*h->iQP - 26*/,                           "pic_init_qp_minus26");
     WRITE_FLAG( 0,                                          "constrained_intra_pred_flag" );
     WRITE_FLAG( h->bEnableTMVPFlag,                         "enable_temporal_mvp_flag" );
