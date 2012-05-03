@@ -541,9 +541,7 @@ void xWriteCU( X265_t *h, UInt nDepth, UInt bLastCU )
         UInt nModeC = pCache->nBestModeC;
         xCabacEncodeBin( pCabac, pBS, (nModeC != NUM_CHROMA_MODE - 1), OFF_CHROMA_PRED_CTX );
         if ( nModeC != NUM_CHROMA_MODE - 1 ) {
-            if ( h->bUseLMChroma )
-                xCabacEncodeBin( pCabac, pBS, (nModeC != NUM_CHROMA_MODE - 2), OFF_CHROMA_PRED_CTX+1 );
-            // Non DM_CHROMA_IDX and LM_CHROMA_IDX
+            // Non DM_CHROMA_IDX
             if( nModeC < NUM_CHROMA_MODE - 2 ) {
                 xCabacEncodeBinsEP( pCabac, pBS, nModeC, 2 );
             }
@@ -719,7 +717,6 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             xEncIntraLoadRef( h, 0, 0, h->ucMaxCUWidth );
 
             // Stage 2a: Decide Intra
-            // TODO: Support LM mode
             // TODO: Support more size
             uiBestSadY = MAX_SAD;
             nBestModeY = 0;
@@ -777,51 +774,6 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
             }
             #endif
 
-            // Stage 3a: Encode CU(Y)
-            // Move to here because LMChroma need reconst Y samples
-            xEncIntraPredLuma( h, nBestModeY, nCUSize );
-            xSubDct( piTmp0,
-                     pucPixY,
-                     pucPredY, MAX_CU_SIZE,
-                     piTmp0, piTmp1,
-                     nCUSize, nCUSize, nBestModeY );
-            uiSumY = xQuant( piCoefY, piTmp0, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
-
-            // Stage 3b: Decode CU
-            // Move to here because LMChroma need reconst Y samples
-            if( uiSumY ) {
-                xDeQuant( piTmp0, piCoefY, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
-                xIDctAdd( pucRecY,
-                          piTmp0,
-                          pucPredY, MAX_CU_SIZE,
-                          piTmp1, piTmp0,
-                          nCUSize, nCUSize, nBestModeY );
-            }
-            else {
-                for( i=0; i<nCUSize; i++ ) {
-                    memcpy( &pucRecY[i*MAX_CU_SIZE], &pucPredY[i*MAX_CU_SIZE], nCUSize );
-                }
-            }
-
-            #if (CHECK_TV)
-            // Check LMChroma Reference
-            {
-                UInt x;
-                for( x=0; x<nCUSize/2; x++ ) {
-                    if( pCache->pucLeftPixM[x] != tv_refLM[0 * tv_sizeC + x] ) {
-                        fprintf( stderr, "IntraPred_LM Wrong, Left[%d], %02X -> %02X\n", x, tv_refLM[0 * tv_sizeC + x], pCache->pucLeftPixM[x] );
-                        abort();
-                    }
-                }
-                for( x=0; x<nCUSize/2; x++ ) {
-                    if( pCache->pucTopPixM[pCache->uiOffset/2+x] != tv_refLM[1 * tv_sizeC + x] ) {
-                        fprintf( stderr, "IntraPred_LM Wrong, Top[%d], %02X -> %02X\n", x, tv_refLM[1 * tv_sizeC + x], pCache->pucTopPixM[pCache->uiOffset/2+x] );
-                        abort();
-                    }
-                }
-            }
-            #endif
-
             // GetAllowedChromaMode
             pucMostModeC[0] = PLANAR_IDX;
             pucMostModeC[1] = VER_IDX;
@@ -842,7 +794,7 @@ Int32 xEncEncode( X265_t *h, X265_Frame *pFrame, UInt8 *pucOutBuf, UInt32 uiBufS
                 UInt32 uiSad[2];
                 realModeC = pucMostModeC[nMode];
 
-                if ( !h->bUseLMChroma && (realModeC == LM_CHROMA_IDX) )
+                if ( realModeC == LM_CHROMA_IDX )
                     continue;
 
                 #if (CHECK_TV)
@@ -907,8 +859,6 @@ _exit:;
             // Stage 3a: Encode CU
             pCache->nBestModeY = nBestModeY;
             pCache->nBestModeC = nBestModeC;
-            // Move to front because LMChroma need reconst Y samples
-            /*
             // Y
             xEncIntraPredLuma( h, nBestModeY, nCUSize );
             xSubDct( piTmp0,
@@ -917,7 +867,6 @@ _exit:;
                      piTmp0, piTmp1,
                      nCUSize, nCUSize, nBestModeY );
             uiSumY = xQuant( piCoefY, piTmp0, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
-            */
 
             // Cr and Cb
             xEncIntraPredChroma( h, realModeC, nCUSize >> 1 );
@@ -937,8 +886,6 @@ _exit:;
             pCbf[2] = (uiSumC[1] != 0);
 
             // Stage 3b: Decode CU
-            // Move to front because LMChroma need reconst Y samples
-            /*
             if( uiSumY ) {
                 xDeQuant( piTmp0, piCoefY, MAX_CU_SIZE, nQP, nCUSize, nCUSize, SLICE_I );
                 xIDctAdd( pucRecY,
@@ -952,7 +899,6 @@ _exit:;
                     memcpy( &pucRecY[i*MAX_CU_SIZE], &pucPredY[i*MAX_CU_SIZE], nCUSize );
                 }
             }
-            */
             // Cr and Cb
             for( i=0; i<2; i++ ) {
                 #if (CHECK_TV)
@@ -1034,7 +980,6 @@ void xEncCahceInit( X265_t *h )
     X265_Cache *pCache  = &h->cache;
     memset( pCache, 0, sizeof(X265_Cache) );
     memset( pCache->pucTopModeY, MODE_INVALID, sizeof(pCache->pucTopModeY) );
-    memset( pCache->pucTopPixM, 0x80, sizeof(pCache->pucTopPixM) );
 }
 
 void xEncCahceInitLine( X265_t *h, UInt y )
@@ -1042,7 +987,6 @@ void xEncCahceInitLine( X265_t *h, UInt y )
     X265_Cache *pCache  = &h->cache;
     pCache->uiOffset    = 0;
     memset( pCache->pucLeftModeY, MODE_INVALID, sizeof(pCache->pucLeftModeY) );
-    memset( pCache->pucLeftPixM, (y == 0 ? 0x80 : pCache->pucTopPixY[0]), sizeof(pCache->pucLeftPixM) );
 }
 
 void xEncCacheLoadCU( X265_t *h, UInt uiX, UInt uiY )
@@ -1120,18 +1064,15 @@ void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeig
           UInt8 *pucTopPixY     = &pCache->pucTopPixY[(uiOffset + uiX)];
           UInt8 *pucTopPixU     = &pCache->pucTopPixU[(uiOffset + uiX)/2];
           UInt8 *pucTopPixV     = &pCache->pucTopPixV[(uiOffset + uiX)/2];
-          UInt8 *pucTopPixM     = &pCache->pucTopPixM[(uiOffset + uiX)/2];
           UInt8 *pucLeftPixY    =  pCache->pucLeftPixY + uiY;
           UInt8 *pucLeftPixU    =  pCache->pucLeftPixU + uiY / 2;
           UInt8 *pucLeftPixV    =  pCache->pucLeftPixV + uiY / 2;
-          UInt8 *pucLeftPixM    =  pCache->pucLeftPixM + uiY / 2;
           UInt8 *pucTopLeftY    =  pCache->pucTopLeftY;
           UInt8 *pucTopLeftU    =  pCache->pucTopLeftU;
           UInt8 *pucTopLeftV    =  pCache->pucTopLeftV;
           UInt8 *pucTopModeY    = &pCache->pucTopModeY[(uiOffset + uiX) / MIN_CU_SIZE];
           UInt8 *pucLeftModeY   =  pCache->pucLeftModeY + (uiY / MIN_CU_SIZE);
     const UInt8 *pucRecY        =  pCache->pucRecY;
-    const UInt8 *pucRecLMLeft   =  pCache->pucRecY + nWidth - 2;
     const UInt8 *pucRecU        =  pCache->pucRecU;
     const UInt8 *pucRecV        =  pCache->pucRecV;
     const UInt8 nBestModeY      =  pCache->nBestModeY;
@@ -1167,25 +1108,6 @@ void xEncCacheUpdate( X265_t *h, UInt32 uiX, UInt32 uiY, UInt nWidth, UInt nHeig
     for( x=0; x<nHeight/2; x++ ) {
         pucLeftPixU[x] = pucRecU[x * MAX_CU_SIZE/2 + (nWidth/2 - 1)];
         pucLeftPixV[x] = pucRecV[x * MAX_CU_SIZE/2 + (nWidth/2 - 1)];
-    }
-
-    // Calculate LMChroma Reference Left
-    for( y=0; y<nHeight/2; y++ ) {
-        UInt32 L0 = pucRecLMLeft[ (y*2+0)*MAX_CU_SIZE ];
-        UInt32 L1 = pucRecLMLeft[ (y*2+1)*MAX_CU_SIZE ];
-        pucLeftPixM[y] = (UInt8)( (L0 + L1) >> 1 );
-    }
-    // Calculate LMChroma Reference Top
-    for( x=0; x<nWidth/2; x++ ) {
-        intptr_t nPrevIdx = ( x == 0 && !bL ) ? 0 : (x*2-1);
-        UInt32 T0 = pucTopPixY[ nPrevIdx ];
-        UInt32 T1 = pucTopPixY[ (x*2  ) ];
-        UInt32 T2 = pucTopPixY[ (x*2+1) ];
-        pucTopPixM[x] = (UInt8)( (T0 + 2*T1 + T2 + 2) >> 2 );
-    }
-    // Extend invalid Top pixel by Left for next CU
-    if ( !bT ) {
-        memset( pucTopPixM+nWidth/2, pucRecLMLeft[0], nWidth/2*sizeof(pucTopPixM[0]) );
     }
 }
 
@@ -1757,38 +1679,6 @@ void xEncIntraPredChroma( X265_t *h, UInt nMode, UInt nSize )
             MAX_CU_SIZE / 2,
             nSize,
             FALSE
-        );
-    }
-    else if ( nMode == LM_CHROMA_IDX ) {
-        UInt8 *pucPredLM = pCache->pucPredC[2];
-        UInt8 *pucRecY   = pCache->pucRecY;
-        UInt32 uiOffset  = pCache->uiOffset/2;
-        UInt x, y;
-
-        // Calculate LMChroma Pred Pixel
-        for( y=0; y<nSize; y++ ) {
-            for( x=0; x<nSize; x++ ) {
-                UInt8 P0 = pucRecY[(2*y+0)*MAX_CU_SIZE+(2*x)];
-                UInt8 P1 = pucRecY[(2*y+1)*MAX_CU_SIZE+(2*x)];
-                pucPredLM[y*MAX_CU_SIZE/2+x] = (P0 + P1) >> 1;
-            }
-        }
-
-        xPredIntraLM(
-            pCache->pucPixRefC[0],
-            pCache->pucLeftPixM,
-            pCache->pucTopPixM + uiOffset,
-                    pucPredLM,
-            pCache->pucPredC[0],
-            nSize
-        );
-        xPredIntraLM(
-            pCache->pucPixRefC[1],
-            pCache->pucLeftPixM,
-            pCache->pucTopPixM + uiOffset,
-                    pucPredLM,
-            pCache->pucPredC[1],
-            nSize
         );
     }
     else {
