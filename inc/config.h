@@ -35,7 +35,7 @@
 #define MAX_WIDTH                           (2048)
 #define MAX_HEIGHT                          (2048)
 #define MIN_CU_SIZE                         ( 4)
-#define MAX_CU_SIZE                         (64)
+#define MAX_CU_SIZE                         (32)
 #define MAX_PU_XY                           (MAX_CU_SIZE / MIN_CU_SIZE)
 #define MAX_PART_NUM                        (MAX_PU_XY * MAX_PU_XY)
 

@@ -34,8 +34,7 @@ void xDefaultParams(X265_t *h)
     // Params
     h->usWidth                      =  0;
     h->usHeight                     =  0;
-    h->ucMaxCUWidth                 = 64;
-    h->ucMinCUWidth                 =  4;
+    h->ucMaxCUWidth                 = 32;
     h->ucMaxCUDepth                 =  1;
     h->ucQuadtreeTULog2MinSize      =  2;
     h->ucQuadtreeTULog2MaxSize      =  5;
@@ -70,7 +69,6 @@ int xCheckParams( X265_t *h )
     int check_failed = false; /* abort if there is a fatal configuration problem */
 
 #define xConfirmPara(a,b) check_failed |= confirmPara(a,b)
-    xConfirmPara( xLog2(h->ucMaxCUWidth) - xLog2(h->ucMinCUWidth) > 1, "Currently, x265 can not support CU Depth more than 1" );
     xConfirmPara( (h->ucMaxCUWidth >> (h->ucMaxCUDepth+1)) == (1 << h->ucQuadtreeTULog2MaxSize), "Assume (QuadtreeTULog2MinSize >= MinCUWidth) fail" );
     xConfirmPara( h->usWidth  % h->ucMaxCUWidth, "Frame width should be multiple of minimum CU size");
     xConfirmPara( h->usHeight % h->ucMaxCUWidth, "Frame height should be multiple of minimum CU size");
