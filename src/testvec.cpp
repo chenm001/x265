@@ -169,7 +169,8 @@ void tGetVector( )
             &dummy0, &dummy1,
             &tv_mostmode[0], &tv_mostmode[1], &tv_mostmode[2]
     );
-    assert( (tv_size >= 4) && (tv_size <= 64) );
+    // TODO: We don't support 64x64 and automatic check, and HM said the CU can't less than 16.
+    assert( (tv_size >= 16) && (tv_size <= 32) );
     tv_sizeC = tv_size >> 1;
 
     // Read Reference Pixel Info

@@ -66,9 +66,35 @@ UInt32 xSad16xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     return uiSad;
 }
 
+UInt32 xSad8xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+{
+    Int x, y;
+    UInt32 uiSad = 0;
+
+    for( y=0; y<N; y++ ) {
+        for( x=0; x<8; x++ ) {
+            uiSad += abs(pSrc[y * nStrideSrc + x] - pRef[y * nStrideRef + x]);
+        }
+    }
+    return uiSad;
+}
+
+UInt32 xSad4xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+{
+    Int x, y;
+    UInt32 uiSad = 0;
+
+    for( y=0; y<N; y++ ) {
+        for( x=0; x<4; x++ ) {
+            uiSad += abs(pSrc[y * nStrideSrc + x] - pRef[y * nStrideRef + x]);
+        }
+    }
+    return uiSad;
+}
+
 xSad *xSadN[MAX_CU_DEPTH+1] = {
-    NULL,       /*  4 x N */
-    NULL,       /*  8 x N */
+    xSad4xN,    /*  4 x N */
+    xSad8xN,    /*  8 x N */
     xSad16xN,   /* 16 x N */
     xSad32xN,   /* 32 x N */
     xSad64xN,   /* 64 x N */
@@ -653,6 +679,9 @@ void xSubDct(
     const Int bUseDstHor  = bUseDst && (!nMode || (nMode>=2  && nMode <= 25));
     const Int bUseDstVer  = bUseDst && (!nMode || (nMode>=11 && nMode <= 34));
     int i, j;
+
+    // The TU must be less than or equal to 5
+    assert( (nLog2Width <= 5) && (nLog2Height <= 5) );
 
     // Sub
     for( i=0; i<iHeight; i++ ) {

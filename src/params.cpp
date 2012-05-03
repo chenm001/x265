@@ -75,6 +75,8 @@ int xCheckParams( X265_t *h )
     xConfirmPara( h->usWidth  % h->ucMaxCUWidth, "Frame width should be multiple of minimum CU size");
     xConfirmPara( h->usHeight % h->ucMaxCUWidth, "Frame height should be multiple of minimum CU size");
     xConfirmPara( h->ucMaxNumRefFrames > MAX_REF_NUM, "Currently, x265 can not support so many reference");
+    xConfirmPara( h->ucMaxCUWidth < 16, "Maximum partition width size should be larger than or equal to 16");
+    xConfirmPara( h->ucQuadtreeTULog2MaxSize != 5, "Maximum transform width size should be equal to 32" );
 
 #undef xConfirmPara
     if (check_failed)
