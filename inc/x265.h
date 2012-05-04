@@ -96,11 +96,11 @@ typedef struct X265_Cache {
     UInt8   pucTopPixY[MAX_WIDTH    ];
     UInt8   pucTopPixU[MAX_WIDTH / 2];
     UInt8   pucTopPixV[MAX_WIDTH / 2];
-    UInt8   pucTopModeY[MAX_WIDTH / MIN_CU_SIZE   ];
+    UInt8   pucTopModeY[MAX_WIDTH / MIN_CU_SIZE];
     UInt8   pucLeftPixY[MAX_CU_SIZE    ];
     UInt8   pucLeftPixU[MAX_CU_SIZE / 2];
     UInt8   pucLeftPixV[MAX_CU_SIZE / 2];
-    UInt8   pucLeftModeY[(MAX_CU_SIZE + MAX_CU_SIZE)    ];
+    UInt8   pucLeftModeY[MAX_CU_SIZE * 2 / MIN_CU_SIZE];
     UInt8   pucTopLeftY[MAX_PART_NUM    ];
     UInt8   pucTopLeftU[MAX_PART_NUM / 4];
     UInt8   pucTopLeftV[MAX_PART_NUM / 4];
