@@ -143,10 +143,8 @@ void xWriteSPS( X265_t *h )
     UInt32 MinCUSize = h->ucMaxCUWidth >> (h->ucMaxCUDepth - 1);
     UInt32 log2MinCUSize = xLog2(MinCUSize)-1;
 
-#if H0412_REF_PIC_LIST_RESTRICTION
     WRITE_FLAG( 1,                                                                    "restricted_ref_pic_lists_flag" );
     WRITE_FLAG( 0,                                                                    "lists_modification_present_flag" );
-#endif
     WRITE_UVLC( log2MinCUSize - 3,                                                    "log2_min_coding_block_size_minus3" );
     WRITE_UVLC( h->ucMaxCUDepth - 1,                                                  "log2_diff_max_min_coding_block_size" );
     WRITE_UVLC( h->ucQuadtreeTULog2MinSize - 2,                                       "log2_min_transform_block_size_minus2" );
