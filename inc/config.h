@@ -70,7 +70,6 @@
 ////////////////////////////
 // JCT-VC H start
 ////////////////////////////
-#define CABAC_INIT_FLAG                 1  ///< H0540:
 #define PARALLEL_MERGE                  1  ///< H0082: parallel merge/skip      
 ////////////////////////////
 // JCT-VC G end

@@ -202,9 +202,7 @@ void xWritePPS( X265_t *h )
         WRITE_CODE(h->ucTSIG, 4, "sign_hiding_threshold");
     }
 
-#if CABAC_INIT_FLAG
     WRITE_FLAG( 1,                                          "cabac_init_present_flag" );
-#endif
 
     // entropy_coding_mode_flag
     // We code the entropy_coding_mode_flag, it's needed for tests.
