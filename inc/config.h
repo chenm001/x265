@@ -102,7 +102,6 @@
 // AHG SLICES defines section end
 /////////////////////////////////
 #define LOSSLESS_CODING                         1 ///< H0530: lossless and lossy (mixed) coding
-#define TILES_WPP_ENTRY_POINT_SIGNALLING        1 // JCTVC-H0556. Assumes either Tiles is ON or WPP is ON (not both simultaneously).
 
 
 typedef unsigned char       UInt8;

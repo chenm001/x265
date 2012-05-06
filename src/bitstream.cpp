@@ -180,9 +180,7 @@ void xWriteSPS( X265_t *h )
         WRITE_FLAG( 1, "AMVPMode");
     }
     
-#if TILES_WPP_ENTRY_POINT_SIGNALLING
     WRITE_CODE( 0, 2,                                                                 "tiles_or_entropy_coding_sync_idc" );
-#endif
 
     WRITE_FLAG( 0, "sps_extension_flag" );
 
@@ -312,9 +310,7 @@ void xWriteSliceEnd( X265_t *h )
     X265_BitStream *pBS = &h->bs;
 
     WRITE_FLAG( 1, "stop bit" );
-#if TILES_WPP_ENTRY_POINT_SIGNALLING
     xWriteAlignZero(pBS);
-#endif
     xWriteRBSPTrailingBits(pBS);
 }
 
