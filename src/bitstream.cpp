@@ -138,13 +138,9 @@ void xWriteSPS( X265_t *h )
     WRITE_FLAG( 0,                                      "qpprime_y_zero_transquant_bypass_flag" );
 #endif
     WRITE_UVLC( h->ucBitsForPOC-4,                      "log2_max_pic_order_cnt_lsb_minus4" );
-#if H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER
-  WRITE_UVLC( 1,                                        "max_dec_pic_buffering[i]" );
-  WRITE_UVLC( 0,                                        "num_reorder_pics[i]" );
-  WRITE_UVLC( 0,                                        "max_latency_increase[i]" );
-#else
-#error Please Sync Code
-#endif
+    WRITE_UVLC( 1,                                      "max_dec_pic_buffering[i]" );
+    WRITE_UVLC( 0,                                      "num_reorder_pics[i]" );
+    WRITE_UVLC( 0,                                      "max_latency_increase[i]" );
 
     UInt32 MinCUSize = h->ucMaxCUWidth >> (h->ucMaxCUDepth - 1);
     UInt32 log2MinCUSize = xLog2(MinCUSize)-1;
