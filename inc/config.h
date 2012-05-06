@@ -102,7 +102,6 @@
 // AHG SLICES defines section end
 /////////////////////////////////
 #define LOSSLESS_CODING                         1 ///< H0530: lossless and lossy (mixed) coding
-#define PIC_CROPPING                            1 ///< Picture cropping and size constraints
 #define NAL_REF_FLAG                            1 ///< Change nal_ref_idc to nal_ref_flag (JCTVC-F463)
 #define H0412_REF_PIC_LIST_RESTRICTION          1
 #define TILES_WPP_ENTRY_POINT_SIGNALLING        1 // JCTVC-H0556. Assumes either Tiles is ON or WPP is ON (not both simultaneously).

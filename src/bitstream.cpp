@@ -125,9 +125,7 @@ void xWriteSPS( X265_t *h )
     WRITE_CODE( 0,                          3,          "max_temporal_layers_minus1" );
     WRITE_UVLC( h->usWidth,                             "pic_width_in_luma_samples" );
     WRITE_UVLC( h->usHeight,                            "pic_height_in_luma_samples" );
-#if PIC_CROPPING
     WRITE_FLAG( 0,                                      "pic_cropping_flag" );
-#endif
 
     WRITE_UVLC( 0,                                      "bit_depth_luma_minus8" );
     WRITE_UVLC( 0,                                      "bit_depth_chroma_minus8" );
