@@ -228,10 +228,7 @@ void xWritePPS( X265_t *h )
     WRITE_CODE( 0, 2,                                       "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
 
     WRITE_FLAG( 0,                                          "output_flag_present_flag" );
-
-#if DBL_CONTROL
     WRITE_FLAG( 1,                                          "deblocking_filter_control_present_flag");
-#endif
 #if PARALLEL_MERGE
     WRITE_UVLC( 0,                                          "log2_parallel_merge_level_minus2");
 #endif
