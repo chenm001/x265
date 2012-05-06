@@ -172,11 +172,9 @@ void xWriteSPS( X265_t *h )
     WRITE_FLAG( 0,                                                                    "adaptive_loop_filter_enabled_flag");
     WRITE_FLAG( 0,                                                                    "temporal_id_nesting_flag" );
 
-#if RPS_IN_SPS
     WRITE_UVLC( 1, "num_short_term_ref_pic_sets" );
     xWriteShortTermRefPicSet( h );
     WRITE_FLAG( 0, "long_term_ref_pics_present_flag" );
-#endif
     
     UInt32 splitCUSize = (h->ucMaxCUWidth >> h->ucMaxCUDepth);
     UInt32 nAMVPNum = h->ucMaxCUDepth;
@@ -218,10 +216,6 @@ void xWritePPS( X265_t *h )
 
 #if CABAC_INIT_FLAG
     WRITE_FLAG( 1,                                          "cabac_init_present_flag" );
-#endif
-
-#if !RPS_IN_SPS
-#error Please Sync Code
 #endif
 
     // entropy_coding_mode_flag

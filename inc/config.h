@@ -102,7 +102,6 @@
 // AHG SLICES defines section end
 /////////////////////////////////
 #define H0566_TLA                               1
-#define RPS_IN_SPS                              1 // Adopted during discussion of JCTVC-H0423
 #define H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER 1
 #define LOSSLESS_CODING                         1 ///< H0530: lossless and lossy (mixed) coding
 #define PIC_CROPPING                            1 ///< Picture cropping and size constraints
