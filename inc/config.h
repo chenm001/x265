@@ -101,7 +101,6 @@
 /////////////////////////////////
 // AHG SLICES defines section end
 /////////////////////////////////
-#define H0566_TLA                               1
 #define H0567_DPB_PARAMETERS_PER_TEMPORAL_LAYER 1
 #define LOSSLESS_CODING                         1 ///< H0530: lossless and lossy (mixed) coding
 #define PIC_CROPPING                            1 ///< Picture cropping and size constraints

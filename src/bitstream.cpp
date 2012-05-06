@@ -221,9 +221,6 @@ void xWritePPS( X265_t *h )
     // entropy_coding_mode_flag
     // We code the entropy_coding_mode_flag, it's needed for tests.
     WRITE_FLAG( 1,                                          "entropy_coding_mode_flag" );
-#if !H0566_TLA
-#error Please Sync Code
-#endif
 
     WRITE_CODE( h->ucMaxNumRefFrames - 1, 3,                "num_ref_idx_l0_default_active_minus1");
     WRITE_CODE( 0, 3,                                       "num_ref_idx_l1_default_active_minus1");
