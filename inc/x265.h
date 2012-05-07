@@ -68,10 +68,6 @@ typedef struct X265_Frame {
 /// cache for every processor
 typedef enum {
     MODE_INVALID    = 255,
-    MODE_PLANE      =   0,
-    MODE_VER        =   1,
-    MODE_HOR        =   2,
-    MODE_DC         =   3,
 } eIntraMode;
 
 /// coefficient scanning type used in ACS
