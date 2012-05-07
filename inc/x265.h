@@ -285,7 +285,7 @@ void xEncIntraPredChroma( X265_t *h, UInt nMode, UInt nSize );
 // ***************************************************************************
 // * Pixel.cpp
 // ***************************************************************************
-typedef UInt32 xSad( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef );
+typedef UInt32 xSad( const UInt N, const UInt8 *pSrc, const UInt nStrideSrc, const UInt8 *pRef, const UInt nStrideRef );
 extern xSad *xSadN[MAX_CU_DEPTH+1];
 typedef void xDCT( Int16 *pDst, Int16 *pSrc, UInt nStride, Int nLines, Int nShift );
 extern xDCT *xDctN[MAX_CU_DEPTH+1];

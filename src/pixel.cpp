@@ -27,9 +27,9 @@
 // ***************************************************************************
 // * SAD Functions
 // ***************************************************************************
-UInt32 xSad64xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+UInt32 xSad64xN( const UInt N, const UInt8 *pSrc, const UInt nStrideSrc, const UInt8 *pRef, const UInt nStrideRef )
 {
-    Int x, y;
+    UInt x, y;
     UInt32 uiSad = 0;
 
     for( y=0; y<N; y++ ) {
@@ -40,9 +40,9 @@ UInt32 xSad64xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     return uiSad;
 }
 
-UInt32 xSad32xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+UInt32 xSad32xN( const UInt N, const UInt8 *pSrc, const UInt nStrideSrc, const UInt8 *pRef, const UInt nStrideRef )
 {
-    Int x, y;
+    UInt x, y;
     UInt32 uiSad = 0;
 
     for( y=0; y<N; y++ ) {
@@ -53,9 +53,9 @@ UInt32 xSad32xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     return uiSad;
 }
 
-UInt32 xSad16xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+UInt32 xSad16xN( const UInt N, const UInt8 *pSrc, const UInt nStrideSrc, const UInt8 *pRef, const UInt nStrideRef )
 {
-    Int x, y;
+    UInt x, y;
     UInt32 uiSad = 0;
 
     for( y=0; y<N; y++ ) {
@@ -66,9 +66,9 @@ UInt32 xSad16xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideR
     return uiSad;
 }
 
-UInt32 xSad8xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+UInt32 xSad8xN( const UInt N, const UInt8 *pSrc, const UInt nStrideSrc, const UInt8 *pRef, UInt const nStrideRef )
 {
-    Int x, y;
+    UInt x, y;
     UInt32 uiSad = 0;
 
     for( y=0; y<N; y++ ) {
@@ -79,9 +79,9 @@ UInt32 xSad8xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRe
     return uiSad;
 }
 
-UInt32 xSad4xN( Int N, UInt8 *pSrc, UInt nStrideSrc, UInt8 *pRef, UInt nStrideRef )
+UInt32 xSad4xN( const UInt N, const UInt8 *pSrc, const UInt nStrideSrc, const UInt8 *pRef, const UInt nStrideRef )
 {
-    Int x, y;
+    UInt x, y;
     UInt32 uiSad = 0;
 
     for( y=0; y<N; y++ ) {
