@@ -225,9 +225,7 @@ void xWritePPS( X265_t *h )
 
     WRITE_FLAG( 0,                                          "output_flag_present_flag" );
     WRITE_FLAG( 1,                                          "deblocking_filter_control_present_flag");
-#if PARALLEL_MERGE
     WRITE_UVLC( 0,                                          "log2_parallel_merge_level_minus2");
-#endif
     WRITE_FLAG( 0, "pps_extension_flag" );
     xWriteRBSPTrailingBits(pBS);
 }
