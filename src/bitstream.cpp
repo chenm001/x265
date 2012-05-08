@@ -204,10 +204,6 @@ void xWritePPS( X265_t *h )
 
     WRITE_FLAG( 1,                                          "cabac_init_present_flag" );
 
-    // entropy_coding_mode_flag
-    // We code the entropy_coding_mode_flag, it's needed for tests.
-    WRITE_FLAG( 1,                                          "entropy_coding_mode_flag" );
-
     WRITE_CODE( h->ucMaxNumRefFrames - 1, 3,                "num_ref_idx_l0_default_active_minus1");
     WRITE_CODE( 0, 3,                                       "num_ref_idx_l1_default_active_minus1");
 
@@ -217,8 +213,8 @@ void xWritePPS( X265_t *h )
     WRITE_CODE( 0, 2,                                       "slice_granularity");
     WRITE_UVLC( 0,                                          "max_cu_qp_delta_depth" );
 
-    WRITE_SVLC( 0,                                          "chroma_qp_offset"     );
-    WRITE_SVLC( 0,                                          "chroma_qp_offset_2nd" );
+    WRITE_SVLC( 0,                                          "cb_qp_offset" );
+    WRITE_SVLC( 0,                                          "cr_qp_offset" );
 
     WRITE_FLAG( 0,                                          "weighted_pred_flag" );   // Use of Weighting Prediction (P_SLICE)
     WRITE_CODE( 0, 2,                                       "weighted_bipred_idc" );  // Use of Weighting Bi-Prediction (B_SLICE)
