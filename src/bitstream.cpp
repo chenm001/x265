@@ -198,9 +198,11 @@ void xWritePPS( X265_t *h )
     WRITE_UVLC( 0,  "seq_parameter_set_id" );
 
     WRITE_FLAG( h->bSignHideFlag, "sign_data_hiding_flag" );
+#if !FIXED_SBH_THRESHOLD
     if( h->bSignHideFlag ) {
         WRITE_CODE(h->ucTSIG, 4, "sign_hiding_threshold");
     }
+#endif
 
     WRITE_FLAG( 1,                                          "cabac_init_present_flag" );
 
