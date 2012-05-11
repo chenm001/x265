@@ -733,6 +733,8 @@ void xCabacEncodeBinEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValue )
 
 void xCabacEncodeBinsEP( X265_Cabac *pCabac, X265_BitStream *pBS, UInt binValues, Int numBins )
 {
+    assert( binValues < (1 << numBins) );
+
     while ( numBins > 8 ) {
         numBins -= 8;
         UInt pattern = binValues >> numBins; 
