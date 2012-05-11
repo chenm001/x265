@@ -97,9 +97,11 @@
 /////////////////////////////////
 // AHG SLICES defines section end
 /////////////////////////////////
-#define FIXED_SBH_THRESHOLD              0  ///< H0156: use fixed controlling threshold for Multiple Sign Bit Hiding (SBH)
+#define SIMPLE_PARAM_UPDATE              0   ///<I0124 : Simplification of param update
+
+#define FIXED_SBH_THRESHOLD              0  ///< I0156: use fixed controlling threshold for Multiple Sign Bit Hiding (SBH)
 #if     FIXED_SBH_THRESHOLD
-#define SBH_THRESHOLD                    4  ///< H0156: value of the fixed SBH controlling threshold
+#define SBH_THRESHOLD                    4  ///< I0156: value of the fixed SBH controlling threshold
 #endif
 
 #define LOSSLESS_CODING                         1 ///< H0530: lossless and lossy (mixed) coding

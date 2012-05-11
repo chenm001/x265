@@ -442,6 +442,10 @@ void xEncodeCoeffNxN( X265_Cabac *pCabac, X265_BitStream *pBS, Int16 *psCoef, UI
                     
                     if( absCoeff[ idx ] >= baseLevel ) {
                         xWriteGoRiceExGolomb( pCabac, pBS, absCoeff[ idx ] - baseLevel, uiGoRiceParam ); 
+#if SIMPLE_PARAM_UPDATE
+                    if(absCoeff[idx] > 3*(1<<uiGoRiceParam))
+                        uiGoRiceParam = MIN(uiGoRiceParam+ 1, 4);
+#endif
                     }
                     if( absCoeff[ idx ] >= 2 ) {
                         iFirstCoeff2 = 0;

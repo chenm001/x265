@@ -733,6 +733,7 @@ const UInt8 g_auiGoRicePrefixLen[5] = {
     8, 7, 6, 5, 4
 };
 
+#if !SIMPLE_PARAM_UPDATE
 const UInt g_aauiGoRiceUpdate[5][24] =
 {
     { 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4 },
@@ -741,5 +742,6 @@ const UInt g_aauiGoRiceUpdate[5][24] =
     { 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4 },
     { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 }
 };
+#endif
 
 

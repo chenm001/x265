@@ -817,7 +817,9 @@ void xWriteGoRiceExGolomb( X265_Cabac *pCabac, X265_BitStream *pBS, UInt uiSymbo
     
     xCabacEncodeBinsEP( pCabac, pBS, ( binValues << ruiGoRiceParam ) + uiCodeWord - ( uiQuotient << ruiGoRiceParam ), numBins + ruiGoRiceParam );
     
+#if !SIMPLE_PARAM_UPDATE  
     ruiGoRiceParam = g_aauiGoRiceUpdate[ruiGoRiceParam][MIN(uiSymbol, 23)];
+#endif
     
     if( bExGolomb ) {
         uiSymbol -= uiMaxVlc + 1;

@@ -264,7 +264,9 @@ extern const UInt8 g_uiGroupIdx[32];
 extern const UInt8 g_uiLastCtx[28];
 extern const UInt8 g_auiGoRiceRange[5];
 extern const UInt8 g_auiGoRicePrefixLen[5];
+#if !SIMPLE_PARAM_UPDATE
 extern const UInt g_aauiGoRiceUpdate[5][24];
+#endif
 
 // ***************************************************************************
 // * Encode.cpp
