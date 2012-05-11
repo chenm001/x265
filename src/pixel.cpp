@@ -732,8 +732,8 @@ void xIDctAdd(
     const Int nLog2Width  = xLog2( iWidth - 1 );
     const Int nLog2Height = xLog2( iHeight - 1 );
     const Int bUseDst     = (iWidth + iHeight == 8) && (nMode != MODE_INVALID);
-    const Int bUseDstHor  = bUseDst && (!nMode || (nMode>=2  && nMode <= 25));
-    const Int bUseDstVer  = bUseDst && (!nMode || (nMode>=11 && nMode <= 34));
+    const Int bUseDstHor  = bUseDst && (!nMode || (nMode>=11 && nMode <= 34));
+    const Int bUseDstVer  = bUseDst && (!nMode || (nMode>=2  && nMode <= 25));
     int i, j;
 
     xInvDctN[nLog2Width  - 1 - bUseDstHor]( piTmp0, pSrc,   nStride, iHeight, SHIFT_INV_1ST );
