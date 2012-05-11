@@ -224,7 +224,7 @@ void codeLastSignificantXY( X265_Cabac *pCabac, X265_BitStream *pBS, UInt nPosX,
 
     // swap
     if( nScanIdx == SCAN_VER ) {
-        UInt tmp = nPosX;
+        UInt tmp = nPosY;
         nPosY = nPosX;
         nPosX = tmp;
     }
